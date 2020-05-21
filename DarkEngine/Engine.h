@@ -172,47 +172,24 @@ public:
 	}
 };
 
-
-
-class PrimitiveComponent : public Component
+class Camera : public Object
 {
 public:
-	PrimitiveComponent* TransformParent;
 	vec2d pos;
-	vec2d scale;
-
-	PrimitiveComponent( PrimitiveComponent* TP)
+	Camera(vec2d p)
 	{
-		TransformParent = TP;
-		pos = TP->pos;
-		scale = TP->scale;
-	}
-
-	PrimitiveComponent( vec2d po, vec2d s) 
-	{		
-		pos = po;
-		scale = s;
-	}
-
-	virtual void onUpdate(float ET) override
-	{
-		//Super
-		Component::onUpdate(ET);
-		//
-		if (TransformParent != nullptr)
-		{
-			pos.x = TransformParent->pos.x;
-			pos.y = TransformParent->pos.y;
-			scale.x = TransformParent->scale.x;
-			scale.y = TransformParent->scale.y;
-		}
+		pos = p;
 	}
 };
+
+
+
 
 class Engine : public olc::PixelGameEngine
 {
 public:
 	Engine* Inst;
+	Camera* Cam;
 
 	Engine()
 	{
@@ -234,6 +211,7 @@ public:
 	}
 	bool OnUserCreate() override
 	{
+		Cam = new Camera(vec2d(0, 0));
 		OnCreate();
 		return true;
 	}
@@ -319,6 +297,54 @@ public:
 	
 };
 
+class PrimitiveComponent : public Component
+{
+public:
+	PrimitiveComponent* TransformParent;
+	vec2d pos;
+	vec2d scale;
+	bool CameraTransform;
+
+	PrimitiveComponent(PrimitiveComponent* TP)
+	{
+		TransformParent = TP;
+		pos = TP->pos;
+		scale = TP->scale;
+	}
+
+	PrimitiveComponent(vec2d po, vec2d s)
+	{
+		pos = po;
+		scale = s;
+	}
+
+	virtual void onUpdate(float ET) override
+	{
+		//Super
+		Component::onUpdate(ET);
+		//
+		if (TransformParent != nullptr)
+		{
+			pos.x = TransformParent->pos.x;
+			pos.y = TransformParent->pos.y;
+			scale.x = TransformParent->scale.x;
+			scale.y = TransformParent->scale.y;
+		}
+		if (TransformParent != nullptr)
+		{
+			if (!TransformParent->CameraTransform && CameraTransform)
+			{
+				pos.x = pos.x - parent->eng->Cam->pos.x;
+				pos.y = pos.y - parent->eng->Cam->pos.y;
+			}
+		}
+		else if (CameraTransform)
+		{
+			pos.x = pos.x - parent->eng->Cam->pos.x;
+			pos.y = pos.y - parent->eng->Cam->pos.y;
+		}
+	}
+};
 
 class Sprite : public PrimitiveComponent
 {
@@ -327,16 +353,19 @@ public:
 	olc::Pixel color;
 	bool Render;
 
+
 	Sprite(vec2d Pos, vec2d size, olc::Pixel col = olc::WHITE) : PrimitiveComponent(Pos,size)
 	{				
 		color = col;
 		Render = true;
+		CameraTransform = true;
 	}
 
 	Sprite( PrimitiveComponent* tp, olc::Pixel col = olc::WHITE) : PrimitiveComponent(tp)
 	{
 		color = col;
 		Render = true;
+		CameraTransform = true;
 	}
 
 
@@ -365,6 +394,7 @@ public:
 	BoxCollider(vec2d Pos, vec2d size, bool col) : PrimitiveComponent(Pos, size)
 	{
 		Collides = col;
+		CameraTransform = true;
 	}
 
 	
@@ -447,6 +477,7 @@ public:
 		onGround = false;
 		friction = 1;
 		optimize = false;
+		
 		
 	}
 	

@@ -1,4 +1,5 @@
 #if 0
+
 #include "Engine.h"
 
 
@@ -84,15 +85,38 @@ public:
 	{ 
 		if (GetKey(olc::Key::D).bHeld)
 		{
-			Pl->rc->vel.x = 60;
-			
+			//Pl->rc->vel.x = 60;
+			Cam->pos.x += ET * 1;
 		}
 		if (GetKey(olc::Key::A).bHeld)
 		{
-			Pl->rc->vel.x = -60;
+		//	Pl->rc->vel.x = -60;
+			Cam->pos.x -= ET * 1;
+		}
+
+		if (GetKey(olc::Key::W).bHeld)
+		{
+			//Pl->rc->vel.x = 60;
+			Cam->pos.y -= ET * 1;
+		}
+		if (GetKey(olc::Key::S).bHeld)
+		{
+			//	Pl->rc->vel.x = -60;
+			Cam->pos.y += ET * 1;
+		}
+
+
+		if (GetKey(olc::Key::RIGHT).bHeld)
+		{
+			Pl->rc->vel.x = 60;
 			
 		}
-		else if (!GetKey(olc::Key::D).bHeld) Pl->rc->vel.x = 0;
+		if (GetKey(olc::Key::LEFT).bHeld)
+		{
+				Pl->rc->vel.x = -60;
+			
+		}
+		else if (!GetKey(olc::Key::RIGHT).bHeld) Pl->rc->vel.x = 0;
 
 		if (GetKey(olc::Key::SPACE).bPressed)
 		{
@@ -110,7 +134,7 @@ int main()
 	
 	Game game;
 	game.Instanciate(&game);
-	game.Construct(240, 240, 4, 4);	
+	game.Construct(240, 240, 1, 1);	
 	game.Start();
 	
 

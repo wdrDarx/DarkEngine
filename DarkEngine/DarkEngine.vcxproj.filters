@@ -32,5 +32,8 @@
     <ClCompile Include="DrawExample.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Pong.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
