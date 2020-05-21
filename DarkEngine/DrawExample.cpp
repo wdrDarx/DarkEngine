@@ -1,54 +1,99 @@
-
 #include "Engine.h"
 
 
-class Player : public Object
-{
-public:
-	Player()
-	{
-
-	}
-
-	BoxCollider* b;
-	RigidComp* rc;
-	Sprite* s;
-
-	void OnCreate() override
-	{
-		Object::OnCreate();
-		b = new BoxCollider(vec2d(50, 50), vec2d(10, 10), true);
-		s = new Sprite(b, olc::RED);
-		rc = new RigidComp(b, vec2d(0, 0), true);
-		rc->Gravity = true;
-		AddComponent(b);
-		AddComponent(s);
-		AddComponent(rc);
-	}
-};
-
-class Ground : public Object
+class P : public Object
 {
 public:
 	vec2d pos;
 	vec2d scale;
-
-	Ground(vec2d p, vec2d s)
-	{
-		pos = p;
-		scale = s;
-	}
-
 	BoxCollider* b;
 	Sprite* s;
+	RigidComp* rc;
+	
+	P(vec2d p, vec2d se)
+	{
+		pos = p;
+		scale = se;
+		
+	}
+	
+	void collide(CollisionSweep col)
+	{
+		if(col.Other->GetComponent<BoxCollider>(col.Other->Components)->pos.y > b->pos.y)
+		rc->collides = false;
+		 
+	}
 
 	void OnCreate() override
 	{
 		Object::OnCreate();
+
 		b = new BoxCollider(pos, scale, true);
 		s = new Sprite(b, olc::WHITE);
+		rc = new RigidComp(b, vec2d(0, 0), true);
+		rc->collideDelegate = std::bind(&P::collide, this, std::placeholders::_1);
+		rc->Gravity = true;
+		rc->optimize = true;
 		AddComponent(b);
 		AddComponent(s);
+		AddComponent(rc);		
+	}
+
+	
+};
+
+class Bomb : public Object
+{
+public:
+	vec2d pos;
+	vec2d scale;
+	BoxCollider* b;
+	Sprite* s;
+	RigidComp* rc;
+
+	Bomb(vec2d p)
+	{
+		pos = p;
+		scale = vec2d(20, 20);
+
+	}
+
+	void Explode()
+	{
+		BoxCollider* t = new  BoxCollider(vec2d(pos.x - 150, pos.y - 150), vec2d(300,300), true);
+		AddComponent(t);
+		std::vector<BoxCollider*> boo = t->BoundingColliders();
+		for (int i = 0; i < boo.size(); ++i)
+		{
+			if (boo.at(i) != t)
+			{
+				RigidComp* r = boo.at(i)->parent->GetComponent<RigidComp>(boo.at(i)->parent->Components);
+				if (r != nullptr)
+				{
+					r->collides = true;
+					r->vel.y = (pos.y - r->pos.y) * -10;
+					r->vel.x = (pos.x - r->pos.x) * -10;
+				}
+			}
+		}
+		eng->RemoveObject(this);
+	}
+	void OnCreate() override
+	{
+		Object::OnCreate();
+
+		b = new BoxCollider(pos, scale, true);
+		s = new Sprite(b, olc::RED);
+		rc = new RigidComp(b, vec2d(0, 0), true);
+		rc->Gravity = true;
+		rc->optimize = true;
+		AddComponent(b);
+		AddComponent(s);
+		AddComponent(rc);
+
+		Delay* d = new Delay(0.5);
+		d->DelayDelegate = std::bind(&Bomb::Explode, this);
+		eng->CreateObject(d);
 	}
 };
 
@@ -57,49 +102,46 @@ class Game : public Engine
 {
 public:
 
+	Object* Ground;
+	BoxCollider* GroundC;
+	//
+	void DrawSquare()
+	{
+		P* d = new P(vec2d(GetMouseX(), GetMouseY()), vec2d(2, 2));
+		CreateObject(d);
+	}
 
-	Player* Pl;
-	Ground* Gr;
-
-
-
+	void SpawnBomb()
+	{
+		Bomb* d = new Bomb(vec2d(GetMouseX(), GetMouseY()));
+		CreateObject(d);
+	}
+	//
 	bool OnCreate() override
 	{
-		// player
-		Pl = new Player();
-		CreateObject(Pl);
-		// ground
-		Gr = new Ground(vec2d(0, 200), vec2d(150, 10));
-		CreateObject(Gr);
-		//Ground2 
-		Gr = new Ground(vec2d(150, 0), vec2d(10, 230));
-		CreateObject(Gr);
-
-
-
+		Gravity = 800.f;
+		Ground = new Object();
+		GroundC = new BoxCollider(vec2d(0, 650), vec2d(700, 10), true);
+		Ground->AddComponent(GroundC);
+		CreateObject(Ground);
 		return true;
 	}
 
 	bool OnUpdate(float ET) override
 	{
-		if (GetKey(olc::Key::D).bHeld)
+		
+		if (GetMouse(0).bHeld)
 		{
-			Pl->rc->vel.x = 60;
+			DrawSquare();
+			
+		}
+		if (GetMouse(1).bPressed)
+		{
+			
+			SpawnBomb();
 
 		}
-		if (GetKey(olc::Key::A).bHeld)
-		{
-			Pl->rc->vel.x = -60;
-
-		}
-		else if (!GetKey(olc::Key::D).bHeld) Pl->rc->vel.x = 0;
-
-		if (GetKey(olc::Key::SPACE).bPressed)
-		{
-			if (Pl->rc->onGround)
-				Pl->rc->vel.y = -150;
-		}
-
+				
 		return true;
 	}
 };
@@ -107,12 +149,10 @@ public:
 
 int main()
 {
-
 	Game game;
 	game.Instanciate(&game);
-	game.Construct(240, 240, 4, 4);
+	game.Construct(700, 700, 1, 1);
 	game.Start();
-
 
 	return 0;
 }

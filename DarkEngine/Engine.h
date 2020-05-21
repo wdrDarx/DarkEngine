@@ -8,8 +8,10 @@
 #include <algorithm>
 #include <iomanip>
 #include <random>
+#include <functional>
 #include <array>
 #include <typeinfo>
+#include <future>
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
 
@@ -217,7 +219,7 @@ public:
 		sAppName = "Engine";
 		
 	}
-	float Gravity = 5.0f;
+	float Gravity = 200.0f;
 	std::vector<Object*> Objects;
 	bool ClearOnFrame = true;
 
@@ -287,6 +289,35 @@ private:
 
 };
 
+class Delay : public Object
+{
+public:
+	
+	float Time;
+	float SetTime;
+	Delay(float t)
+	{
+		
+		SetTime = t;
+	}
+	virtual void fire()
+	{
+		if(DelayDelegate != nullptr)
+		DelayDelegate();
+	}
+	void OnUpdate(float ET) override
+	{
+		Object::OnUpdate(ET);
+		Time += ET;
+		if (Time >= SetTime)
+		{
+			fire();
+			eng->RemoveObject(this);
+		}
+	}
+	std::function<void()> DelayDelegate;
+	
+};
 
 
 class Sprite : public PrimitiveComponent
@@ -408,7 +439,7 @@ public:
 
 
 
-	RigidComp(BoxCollider* bc, vec2d Vel, bool col = false) : PrimitiveComponent(bc)
+	RigidComp(BoxCollider* bc, vec2d Vel, bool col) : PrimitiveComponent(bc)
 	{
 		Box = bc;
 		vel = Vel;
@@ -416,12 +447,14 @@ public:
 		onGround = false;
 		friction = 1;
 		optimize = false;
+		
 	}
 	
 
-	virtual void OnCollide()
+	virtual void OnCollide(CollisionSweep col)
 	{
-
+		if(collideDelegate != nullptr)
+		collideDelegate(col);		
 	}
 
 	void onUpdate(float ET) override
@@ -438,30 +471,34 @@ public:
 				{
 					calculate = false; parent->eng->RemoveObject(parent);
 				}
+
+				
 			}
 			if (calculate)
 			{
 
 				//std::cout << "update" << std::endl;
 				Box->pos.x += vel.x * ET;
-				if (Box->CollisionCheck(Box).collides)
+				CollisionSweep c1 = Box->CollisionCheck(Box);
+				if (c1.collides)
 				{
 					Box->pos.x -= vel.x * ET;
 					vel.x -= vel.x * ET;
-					OnCollide();
+					OnCollide(c1);
 				};
 
 				Box->pos.y += vel.y * ET;
-				if (Box->CollisionCheck(Box).collides)
+				 c1 = Box->CollisionCheck(Box);
+				if (c1.collides)
 				{
 					Box->pos.y -= vel.y * ET;
 					vel.y -= vel.y * ET;
 					onGround = true;
-					OnCollide();
+					OnCollide(c1);
 				}
 				else onGround = false;
 
-				if (Gravity) vel.y += 200 * ET;
+				if (Gravity) vel.y += parent->eng->Gravity * ET;
 
 
 				vel.x -= friction * vel.x * ET;
@@ -471,6 +508,8 @@ public:
 		}
 
 	}
+	// bind like this -> rc->collideDelegate = std::bind(&P::collide, this, std::placeholders::_1);
+	std::function<void(CollisionSweep)> collideDelegate;
 };
 
 
