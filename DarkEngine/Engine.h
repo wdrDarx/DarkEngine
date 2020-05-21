@@ -508,7 +508,7 @@ public:
 		}
 
 	}
-	// bind like this -> rc->collideDelegate = std::bind(&P::collide, this, std::placeholders::_1);
+	// bind like this -> rc->collideDelegate = std::bind(&class::functionName, this, std::placeholders::_1);
 	std::function<void(CollisionSweep)> collideDelegate;
 };
 
