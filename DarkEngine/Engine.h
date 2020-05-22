@@ -282,6 +282,7 @@ public:
 	
 	float Time;
 	float SetTime;
+	bool loop = false;
 	Delay(float t)
 	{
 		
@@ -299,7 +300,10 @@ public:
 		if (Time >= SetTime)
 		{
 			fire();
-			eng->RemoveObject(this);
+			if (!loop)
+				eng->RemoveObject(this);
+			else
+				Time = 0.f;
 		}
 	}
 	std::function<void()> DelayDelegate;

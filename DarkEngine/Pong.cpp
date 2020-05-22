@@ -1,4 +1,4 @@
-#if 0
+#if 1
 #include "Engine.h"
 
 class Ground : public Object
@@ -138,6 +138,8 @@ public:
 	//
 	Goal* p1g;
 	Goal* p2g;
+	//
+	int GameTime;
 
 	vec2d Ballvell;
 
@@ -149,13 +151,28 @@ public:
 	}
 	void reset()
 	{
+		Ballvell = vec2d(150, 50);
+		GameTime = 0;
 		Delay* d = new Delay(2.f);
 		d->DelayDelegate = std::bind(&Game::SetBallVelocity, this);
 		CreateObject(d);
 	}
 
+	void Second()
+	{
+		system("cls");
+		GameTime++;
+		std::cout << "Time: " << GameTime << std::endl;
+		std::cout << "Left score: " << p2->Score << std::endl;
+		std::cout << "Right score: " << p1->Score << std::endl;
+		b->rc->vel.x *=  1 + GameTime * 0.005f;
+		b->rc->vel.y *=  1 + GameTime * 0.005f;
+	}
+
 	bool OnCreate() override
 	{
+		GameTime = 0;
+		//
 		Ballvell = vec2d(150, 50);
 		//
 		p1 = new Player();
@@ -178,6 +195,11 @@ public:
 		p2->b->pos.x = 220.f;
 		reset();
 		//
+		Delay* d = new Delay(1.f);
+		d->DelayDelegate = std::bind(&Game::Second, this);
+		d->loop = true;
+		CreateObject(d);
+		//
 		return true;
 	}
 
@@ -188,20 +210,20 @@ public:
 		p2->rc->vel.y = 0.f;
 		if (GetKey(olc::Key::W).bHeld)
 		{
-			p1->rc->vel.y = -100.f;
+			p1->rc->vel.y = -120.f;
 		}
 		if (GetKey(olc::Key::S).bHeld)
 		{
-			p1->rc->vel.y = 100.f;
+			p1->rc->vel.y = 120.f;
 		}
 		//p2
 		if (GetKey(olc::Key::UP).bHeld)
 		{
-			p2->rc->vel.y = -100.f;
+			p2->rc->vel.y = -120.f;
 		}
 		if (GetKey(olc::Key::DOWN).bHeld)
 		{
-			p2->rc->vel.y = 100.f;
+			p2->rc->vel.y = 120.f;
 		}
 
 		if (b->over == true)
