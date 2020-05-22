@@ -10,9 +10,12 @@
 #include <random>
 #include <functional>
 #include <array>
+#include <thread>
+#include <mutex>
 #include <typeinfo>
 #include <future>
 #define OLC_PGE_APPLICATION
+#define ASYNC 0
 #include "olcPixelGameEngine.h"
 
 template< typename TContainer >
@@ -87,6 +90,8 @@ public:
 	{
 
 	}
+
+	
 
 	virtual void OnCreate()
 	{
@@ -218,6 +223,22 @@ public:
 
 public:
 	
+	static void EngineUpdate(bool ClearOnFrame, Engine* eng, float fElapsedTime)
+	{
+		if (ClearOnFrame)
+			eng->FillRect(0, 0, eng->ScreenWidth(), eng->ScreenHeight(), olc::BLACK);
+		//int s = sizeof(bounds) / sizeof(vec2d);
+
+
+
+		for (int i = 0; i < eng->Objects.size(); i++)
+		{
+			eng->Objects.at(i)->OnUpdate(fElapsedTime);
+		}
+
+		eng->OnUpdate(fElapsedTime);
+	}
+
 	virtual bool OnCreate()
 	{
 
@@ -232,19 +253,7 @@ public:
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
-
-		if (ClearOnFrame)
-			FillRect(0, 0, ScreenWidth(), ScreenHeight(), olc::BLACK);
-		//int s = sizeof(bounds) / sizeof(vec2d);
-
-
-
-		for (int i = 0; i < Objects.size(); i++)
-		{
-			Objects.at(i)->OnUpdate(fElapsedTime);
-		}
-
-		OnUpdate(fElapsedTime);
+		std::future<void> update = std::async(std::launch::async, EngineUpdate, ClearOnFrame, this, fElapsedTime);
 
 		return true;
 	}
@@ -408,7 +417,7 @@ public:
 			if (scan.at(i)->GetComponent<BoxCollider>(scan.at(i)->Components) != nullptr)
 			{
 				BoxCollider* check = scan.at(i)->GetComponent<BoxCollider>(scan.at(i)->Components);
-				if (check != this)
+				if (check != this && check != nullptr)
 				{
 					if (pos.x < check->pos.x + check->scale.x &&
 						pos.x + scale.x > check->pos.x &&
@@ -481,11 +490,48 @@ public:
 		
 	}
 	
+	//static std::mutex colMutex;
 
 	virtual void OnCollide(CollisionSweep col)
 	{
 		if(collideDelegate != nullptr)
 		collideDelegate(col);		
+		//collisionChecks.clear();
+	}
+
+	static void CollisionCheck(float ET, RigidComp* rc)
+	{
+		//std::lock_guard<std::mutex> lock(colMutex);
+
+		BoxCollider* Box = rc->Box;
+		
+		//std::lock_guard<std::mutex> guard(colMutex);
+
+		Box->pos.x += rc->vel.x * ET;
+		CollisionSweep c1 = Box->CollisionCheck(Box);
+		if (c1.collides)
+		{
+			Box->pos.x -= rc->vel.x * ET;
+			rc->vel.x -= rc->vel.x * ET;
+			rc->OnCollide(c1);
+		};
+
+		Box->pos.y += rc->vel.y * ET;
+		c1 = Box->CollisionCheck(Box);
+		if (c1.collides)
+		{
+			Box->pos.y -= rc->vel.y * ET;
+			rc->vel.y -= rc->vel.y * ET;
+			rc->onGround = true;
+			rc->OnCollide(c1);
+		}
+		else rc->onGround = false;
+
+		if (rc->Gravity) rc->vel.y += rc->parent->eng->Gravity * ET;
+
+
+		rc->vel.x -= rc->friction * rc->vel.x * ET;
+		rc->vel.y -= rc->friction * rc->vel.y * ET;
 	}
 
 	void onUpdate(float ET) override
@@ -502,45 +548,28 @@ public:
 				{
 					calculate = false; parent->eng->RemoveObject(parent);
 				}
+				//if (abs(vel.x) < 0.1f && abs(vel.y) < 0.1f && !onGround) calculate = false;
 
 				
 			}
 			if (calculate)
 			{
 
-				//std::cout << "update" << std::endl;
-				Box->pos.x += vel.x * ET;
-				CollisionSweep c1 = Box->CollisionCheck(Box);
-				if (c1.collides)
-				{
-					Box->pos.x -= vel.x * ET;
-					vel.x -= vel.x * ET;
-					OnCollide(c1);
-				};
-
-				Box->pos.y += vel.y * ET;
-				 c1 = Box->CollisionCheck(Box);
-				if (c1.collides)
-				{
-					Box->pos.y -= vel.y * ET;
-					vel.y -= vel.y * ET;
-					onGround = true;
-					OnCollide(c1);
-				}
-				else onGround = false;
-
-				if (Gravity) vel.y += parent->eng->Gravity * ET;
-
-
-				vel.x -= friction * vel.x * ET;
-				vel.y -= friction * vel.y * ET;
+#ifdef ASYNC
+				std::future<void> col = std::async(std::launch::async, CollisionCheck, ET, this);
+				//std::thread t1(&RigidComp::CollisionCheck, ET, this);
+				//t1.join();
+#else
+				CollisionCheck(ET,this);
+#endif
 
 			}
 		}
-
+		
 	}
 	// bind like this -> rc->collideDelegate = std::bind(&class::functionName, this, std::placeholders::_1);
 	std::function<void(CollisionSweep)> collideDelegate;
+	//std::vector<std::future<void>> collisionChecks;
 };
 
 

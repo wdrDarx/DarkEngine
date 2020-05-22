@@ -1,4 +1,4 @@
-#if 0
+#if 1
 #include "Engine.h"
 
 
@@ -20,8 +20,8 @@ public:
 	
 	void collide(CollisionSweep col)
 	{
-		if(col.Other->GetComponent<BoxCollider>(col.Other->Components)->pos.y > b->pos.y)
-		rc->collides = false;
+		//if(col.Other->GetComponent<BoxCollider>(col.Other->Components)->pos.y > b->pos.y)
+		//rc->collides = false;
 		 
 	}
 
@@ -108,7 +108,7 @@ public:
 	//
 	void DrawSquare()
 	{
-		P* d = new P(vec2d(GetMouseX(), GetMouseY()), vec2d(2, 2));
+		P* d = new P(vec2d(GetMouseX(), GetMouseY()), vec2d(4, 4));
 		CreateObject(d);
 	}
 
@@ -120,9 +120,20 @@ public:
 	//
 	bool OnCreate() override
 	{
+		//
 		Gravity = 800.f;
 		Ground = new Object();
+		GroundC = new BoxCollider(vec2d(0, 0), vec2d(10, 700), true);
+		Ground->AddComponent(GroundC);
+		CreateObject(Ground);
+		//
+		Ground = new Object();
 		GroundC = new BoxCollider(vec2d(0, 650), vec2d(700, 10), true);
+		Ground->AddComponent(GroundC);
+		CreateObject(Ground);
+		//
+		Ground = new Object();
+		GroundC = new BoxCollider(vec2d(700, 0), vec2d(10, 700), true);
 		Ground->AddComponent(GroundC);
 		CreateObject(Ground);
 		return true;
