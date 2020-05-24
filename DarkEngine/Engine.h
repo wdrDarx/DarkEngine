@@ -293,18 +293,23 @@ public:
 		if(DelayDelegate != nullptr)
 		DelayDelegate();
 	}
+
+	static void DelayUpdate(Delay* d, float ET)
+	{
+		d->Time += ET;
+		if (d->Time >= d->SetTime)
+		{
+			d->fire();
+			if (!d->loop)
+				d->eng->RemoveObject(d);
+			else
+				d->Time = 0.f;
+		}
+	}
 	void OnUpdate(float ET) override
 	{
 		Object::OnUpdate(ET);
-		Time += ET;
-		if (Time >= SetTime)
-		{
-			fire();
-			if (!loop)
-				eng->RemoveObject(this);
-			else
-				Time = 0.f;
-		}
+		std::future<void> tick = std::async(std::launch::async, DelayUpdate, this, ET);
 	}
 	std::function<void()> DelayDelegate;
 	
@@ -414,6 +419,7 @@ public:
 	int index;
 	float Changetime;
 	bool loop;
+	bool play;
 	Sprite* ref;
 
 	Flipbook(Sprite* r, std::vector<olc::Sprite*> F, float ct, bool l)
@@ -423,6 +429,7 @@ public:
 		loop = l;
 		index = 0;
 		ref = r;
+		play = true;
 	}
 
 	void changeFrames()
@@ -435,23 +442,28 @@ public:
 				parent->eng->RemoveObject(d);
 		}
 		
-
+		if(play)
 		ref->spr = Frames.at(index);
 		
 		
 	}
 
+	static void playFrame(Flipbook* f)
+	{
+		if (f->Frames.size() > 0 && f->ref != nullptr)
+		{
+			f->ref->spr = f->Frames.at(f->index);
+			f->d = new Delay(f->Changetime);
+			f->d->DelayDelegate = std::bind(&Flipbook::changeFrames, f);
+			f->d->loop = f->loop;
+			f->parent->eng->CreateObject(f->d);
+		}
+	}
+
 	void onAdd() override
 	{
 		Component::onAdd();
-		if (Frames.size() > 0 && ref != nullptr)
-		{
-			ref->spr = Frames.at(index);
-			d = new Delay(Changetime);
-			d->DelayDelegate = std::bind(&Flipbook::changeFrames, this);
-			d->loop = loop;
-			parent->eng->CreateObject(d);
-		}
+		std::future<void> frame = std::async(std::launch::async, playFrame, this);
 	}
 
 private: 

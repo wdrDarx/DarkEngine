@@ -127,6 +127,7 @@
     <ClInclude Include="olcPixelGameEngine.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Animation.cpp" />
     <ClCompile Include="DrawExample.cpp" />
     <ClCompile Include="Osu.cpp" />
     <ClCompile Include="Pong.cpp" />
