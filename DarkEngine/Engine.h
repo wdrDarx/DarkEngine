@@ -1,8 +1,9 @@
+
 #include <iostream>
 #include <chrono>
 #include <vector>
 #include <typeinfo>
-#include <windows.h>
+//#include <windows.h>
 #include <math.h>
 #include <cstdint>
 #include <algorithm>
@@ -14,10 +15,11 @@
 #include <mutex>
 #include <typeinfo>
 #include <future>
+#define ASYNC
 #define OLC_PGE_APPLICATION
-#define OLC_DBG_OVERDRAW 1
-#define ASYNC 0
+#define OLC_GFX_OPENGL10
 #include "olcPixelGameEngine.h"
+
 
 template< typename TContainer >
 static bool EraseFromUnorderedByIndex(TContainer& inContainer, size_t inIndex)
@@ -96,10 +98,7 @@ public:
 
 	virtual void OnCreate()
 	{
-		for (int i = 0; i < Components.size(); ++i)
-		{
-			Components.at(i)->onAdd();
-		}
+		
 	}
 
 	virtual void  OnUpdate(float ET)
@@ -254,7 +253,11 @@ public:
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
+#ifdef ASYNC
 		std::future<void> update = std::async(std::launch::async, EngineUpdate, ClearOnFrame, this, fElapsedTime);
+#else
+		EngineUpdate(ClearOnFrame, this, fElapsedTime);
+#endif
 
 		return true;
 	}
@@ -371,6 +374,7 @@ class Sprite : public PrimitiveComponent
 public:	
 	olc::Pixel color;
 	olc::Sprite* spr;
+	olc::Decal* Dc;
 	bool Render;
 
 
@@ -379,6 +383,8 @@ public:
 		color = col;
 		Render = true;
 		CameraTransform = true;
+		//spr = new olc::Sprite();
+		
 	}
 
 	Sprite( PrimitiveComponent* tp, olc::Pixel col = olc::WHITE) : PrimitiveComponent(tp)
@@ -386,9 +392,15 @@ public:
 		color = col;
 		Render = true;
 		CameraTransform = true;
+		//spr = new olc::Sprite();			
 	}
 
-
+	void onAdd() override
+	{
+		PrimitiveComponent::onAdd();
+		if(spr != nullptr)
+		Dc = new olc::Decal(spr);			
+	}
 
 
 	void onUpdate(float ET) override
@@ -398,14 +410,19 @@ public:
 		{
 			if (Render)
 			{
-				if (spr == nullptr)
+				//Dc = new olc::Decal(spr);
+				if (Dc == nullptr || Dc->sprite == nullptr)
 					parent->eng->FillRect(pos.x, pos.y, scale.x, scale.y, color);
 				else
 				{
-					if(parent->eng->GetPixelMode() != olc::Pixel::Mode::ALPHA)
-					parent->eng->SetPixelMode(olc::Pixel::Mode::ALPHA);
-					parent->eng->DrawSprite(olc::vi2d(pos.x, pos.y), spr);
-				}					
+					if (Dc->sprite != nullptr)
+					{
+						//Dc = new olc::Decal(spr);
+						parent->eng->DrawDecal(olc::vi2d(pos.x, pos.y), Dc);
+					}
+				}	
+				//parent->eng->SetPixelMode(olc::Pixel::Mode::NORMAL);
+				//Dc = new olc::Decal(spr);
 			}
 
 			
@@ -417,14 +434,15 @@ public:
 class Flipbook : public Component
 {
 public:
-	std::vector<olc::Sprite*> Frames;
+	std::vector<olc::Decal*> Frames;
 	int index;
 	float Changetime;
 	bool loop;
 	bool play;
+	
 	Sprite* ref;
 
-	Flipbook(Sprite* r, std::vector<olc::Sprite*> F, float ct, bool l)
+	Flipbook(Sprite* r, std::vector<olc::Decal*> F, float ct, bool l)
 	{
 		Frames = F;
 		Changetime = ct;
@@ -432,6 +450,7 @@ public:
 		index = 0;
 		ref = r;
 		play = true;
+		
 	}
 
 	void changeFrames()
@@ -444,8 +463,13 @@ public:
 				parent->eng->RemoveObject(d);
 		}
 		
-		if(play)
-		ref->spr = Frames.at(index);
+		if (play)
+		{		
+						
+			ref->Dc = Frames.at(index);
+			ref->Dc->Update();
+						
+		}
 		
 		
 	}
@@ -454,7 +478,8 @@ public:
 	{
 		if (f->Frames.size() > 0 && f->ref != nullptr)
 		{
-			f->ref->spr = f->Frames.at(f->index);
+			//f->ref->Dc = &f->Frames.at(f->index);
+
 			f->d = new Delay(f->Changetime);
 			f->d->DelayDelegate = std::bind(&Flipbook::changeFrames, f);
 			f->d->loop = f->loop;

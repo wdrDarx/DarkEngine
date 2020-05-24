@@ -1,5 +1,6 @@
 #if 1
 
+
 #include "Engine.h"
 
 
@@ -21,14 +22,14 @@ public:
 		Object::OnCreate();
 		b = new BoxCollider(vec2d(50, 50), vec2d(200, 256), true);
 		s = new Sprite(b, olc::RED);
-		std::vector<olc::Sprite*> frames = { new olc::Sprite("tile000.png"),  new olc::Sprite("tile001.png"),  new olc::Sprite("tile002.png"),  new olc::Sprite("tile003.png"),  new olc::Sprite("tile004.png"),  new olc::Sprite("tile005.png") };
+		std::vector<olc::Decal*> frames = { new olc::Decal( new olc::Sprite("tile001.png")),new olc::Decal( new olc::Sprite("tile002.png")) ,new olc::Decal(new olc::Sprite("tile003.png")),new olc::Decal(new olc::Sprite("tile004.png")),new olc::Decal(new olc::Sprite("tile005.png")) };
 		f = new Flipbook(s, frames, 0.1f, true);
 		rc = new RigidComp(b, vec2d(0, 0), true);
 		rc->Gravity = true;
 		AddComponent(b);
 		AddComponent(s);
 		AddComponent(rc);
-		AddComponent(f);
+		AddComponent(f);		
 	}
 
 	void OnUpdate(float ET) override
