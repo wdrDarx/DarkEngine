@@ -15,6 +15,7 @@
 #include <typeinfo>
 #include <future>
 #define OLC_PGE_APPLICATION
+#define OLC_DBG_OVERDRAW 1
 #define ASYNC 0
 #include "olcPixelGameEngine.h"
 
@@ -401,6 +402,7 @@ public:
 					parent->eng->FillRect(pos.x, pos.y, scale.x, scale.y, color);
 				else
 				{
+					if(parent->eng->GetPixelMode() != olc::Pixel::Mode::ALPHA)
 					parent->eng->SetPixelMode(olc::Pixel::Mode::ALPHA);
 					parent->eng->DrawSprite(olc::vi2d(pos.x, pos.y), spr);
 				}					
@@ -435,7 +437,7 @@ public:
 	void changeFrames()
 	{
 		index++;
-		if (index > Frames.size())
+		if (index > Frames.size() - 1)
 		{
 			if (loop) index = 0;
 			else

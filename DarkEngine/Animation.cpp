@@ -19,16 +19,23 @@ public:
 	void OnCreate() override
 	{
 		Object::OnCreate();
-		b = new BoxCollider(vec2d(50, 50), vec2d(256, 256), true);
+		b = new BoxCollider(vec2d(50, 50), vec2d(200, 256), true);
 		s = new Sprite(b, olc::RED);
 		std::vector<olc::Sprite*> frames = { new olc::Sprite("tile000.png"),  new olc::Sprite("tile001.png"),  new olc::Sprite("tile002.png"),  new olc::Sprite("tile003.png"),  new olc::Sprite("tile004.png"),  new olc::Sprite("tile005.png") };
-		f = new Flipbook(s, frames, 0.05f, true);
+		f = new Flipbook(s, frames, 0.1f, true);
 		rc = new RigidComp(b, vec2d(0, 0), true);
 		rc->Gravity = true;
 		AddComponent(b);
 		AddComponent(s);
 		AddComponent(rc);
 		AddComponent(f);
+	}
+
+	void OnUpdate(float ET) override
+	{
+		Object::OnUpdate(ET);
+		eng->Cam->pos.x = b->pos.x + b->scale.x / 2 - 500;
+		eng->Cam->pos.y = b->pos.y + b->scale.y / 2 - 500;
 	}
 };
 
@@ -81,44 +88,26 @@ public:
 		Gr = new Ground(vec2d(500, 0), vec2d(10, 500));
 		CreateObject(Gr);
 
-
+		//
+		Gravity = 1500.f;
 
 		return true;
 	}
 
 	bool OnUpdate(float ET) override
 	{
-		if (GetKey(olc::Key::D).bHeld)
-		{
-			//Pl->rc->vel.x = 60;
-			Cam->pos.x += ET * 1;
-		}
-		if (GetKey(olc::Key::A).bHeld)
-		{
-			//	Pl->rc->vel.x = -60;
-			Cam->pos.x -= ET * 1;
-		}
-
-		if (GetKey(olc::Key::W).bHeld)
-		{
-			//Pl->rc->vel.x = 60;
-			Cam->pos.y -= ET * 1;
-		}
-		if (GetKey(olc::Key::S).bHeld)
-		{
-			//	Pl->rc->vel.x = -60;
-			Cam->pos.y += ET * 1;
-		}
+		
 
 
 		if (GetKey(olc::Key::RIGHT).bHeld)
 		{
-			Pl->rc->vel.x = 60;
+			Pl->rc->vel.x = 300;
 
 		}
 		if (GetKey(olc::Key::LEFT).bHeld)
 		{
-			Pl->rc->vel.x = -60;
+			Pl->rc->vel.x = -300;
+			//Pl->s->scale.x *= -1;
 
 		}
 		else if (!GetKey(olc::Key::RIGHT).bHeld) Pl->rc->vel.x = 0;
@@ -126,7 +115,7 @@ public:
 		if (GetKey(olc::Key::SPACE).bPressed)
 		{
 			if (Pl->rc->onGround)
-				Pl->rc->vel.y = -150;
+				Pl->rc->vel.y = -800;
 		}
 
 		return true;
