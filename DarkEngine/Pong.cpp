@@ -78,6 +78,7 @@ public:
 	BoxCollider* b;
 	RigidComp* rc;
 	Sprite* s;
+	Flipbook* f;
 	bool over;
 
 	void collide(CollisionSweep col)
@@ -109,17 +110,24 @@ public:
 
 	void OnCreate() override
 	{
+		olc::Sprite* frame1 = new olc::Sprite("GreenTick.png");
+		olc::Sprite* frame2 = new olc::Sprite("GreenTick2.png");
 		Object::OnCreate();
 		over = false;
 		b = new BoxCollider(vec2d(115,55 ), vec2d(3, 3), true);
 		s = new Sprite(b, olc::RED);
+		std::vector<olc::Sprite*> frames = { frame1,frame2 };
+		f = new Flipbook(s, frames, 0.1f, true);
+		s->spr = new olc::Sprite("GreenTick.png");
 		rc = new RigidComp(b, vec2d(0, 0), true);
 		rc->Gravity = false;
 		rc->collideDelegate = std::bind(&Ball::collide, this, std::placeholders::_1);
 		rc->friction = 0;
 		AddComponent(b);
+		AddComponent(f);
 		AddComponent(s);
 		AddComponent(rc);
+		//AddComponent(f);
 	}
 };
 
@@ -165,8 +173,8 @@ public:
 		std::cout << "Time: " << GameTime << std::endl;
 		std::cout << "Left score: " << p2->Score << std::endl;
 		std::cout << "Right score: " << p1->Score << std::endl;
-		b->rc->vel.x *=  1 + GameTime * 0.005f;
-		b->rc->vel.y *=  1 + GameTime * 0.005f;
+		b->rc->vel.x *=  1 + GameTime * 0.001f;
+		b->rc->vel.y *=  1 + GameTime * 0.001f;
 	}
 
 	bool OnCreate() override

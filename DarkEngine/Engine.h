@@ -364,6 +364,7 @@ class Sprite : public PrimitiveComponent
 
 public:	
 	olc::Pixel color;
+	olc::Sprite* spr;
 	bool Render;
 
 
@@ -383,6 +384,7 @@ public:
 
 
 
+
 	void onUpdate(float ET) override
 	{
 		PrimitiveComponent::onUpdate(ET);
@@ -390,13 +392,70 @@ public:
 		{
 			if (Render)
 			{
-				parent->eng->FillRect(pos.x, pos.y, scale.x, scale.y, color);
+				if (spr == nullptr)
+					parent->eng->FillRect(pos.x, pos.y, scale.x, scale.y, color);
+				else
+				{
+					parent->eng->SetPixelMode(olc::Pixel::Mode::ALPHA);
+					parent->eng->DrawSprite(olc::vi2d(pos.x, pos.y), spr);
+				}					
 			}
 
 			
 		}
 	}
 
+};
+
+class Flipbook : public Component
+{
+public:
+	std::vector<olc::Sprite*> Frames;
+	int index;
+	float Changetime;
+	bool loop;
+	Sprite* ref;
+
+	Flipbook(Sprite* r, std::vector<olc::Sprite*> F, float ct, bool l)
+	{
+		Frames = F;
+		Changetime = ct;
+		loop = l;
+		index = 0;
+		ref = r;
+	}
+
+	void changeFrames()
+	{
+		index++;
+		if (index > Frames.size())
+		{
+			if (loop) index = 0;
+			else
+				parent->eng->RemoveObject(d);
+		}
+		
+
+		ref->spr = Frames.at(index);
+		
+		
+	}
+
+	void onAdd() override
+	{
+		Component::onAdd();
+		if (Frames.size() > 0 && ref != nullptr)
+		{
+			ref->spr = Frames.at(index);
+			d = new Delay(Changetime);
+			d->DelayDelegate = std::bind(&Flipbook::changeFrames, this);
+			d->loop = loop;
+			parent->eng->CreateObject(d);
+		}
+	}
+
+private: 
+		Delay* d;
 };
 
 class BoxCollider : public PrimitiveComponent
