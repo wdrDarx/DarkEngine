@@ -663,7 +663,7 @@ namespace olc
 
 		void DrawWarpedDecal(olc::Decal* decal, const olc::vf2d(&pos)[4], const olc::Pixel& tint = olc::WHITE);
 		void DrawWarpedDecal(olc::Decal* decal, const olc::vf2d* pos, const olc::Pixel& tint = olc::WHITE);
-		void DrawWarpedDecal(olc::Decal* decal, const std::array<olc::vf2d, 4>& pos, const olc::Pixel& tint = olc::WHITE);
+		void DrawWarpedDecal(olc::Decal* decal,  std::array<olc::vf2d, 4>& pos, const olc::Pixel& tint = olc::WHITE);
 
 		void DrawRotatedDecal(const olc::vf2d& pos, olc::Decal* decal, const float fAngle, const olc::vf2d& center = { 0.0f, 0.0f }, const olc::vf2d& scale = { 1.0f,1.0f }, const olc::Pixel& tint = olc::WHITE);
 
@@ -2049,7 +2049,7 @@ namespace olc
 		}
 	}
 
-	void PixelGameEngine::DrawWarpedDecal(olc::Decal * decal, const std::array<olc::vf2d, 4> & pos, const olc::Pixel & tint)
+	void PixelGameEngine::DrawWarpedDecal(olc::Decal * decal,  std::array<olc::vf2d, 4> & pos, const olc::Pixel & tint)
 	{
 		DrawWarpedDecal(decal, pos.data(), tint);
 	}

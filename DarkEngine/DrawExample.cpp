@@ -1,5 +1,5 @@
 #if 0
-
+#define ASYNC
 #include "Engine.h"
 
 

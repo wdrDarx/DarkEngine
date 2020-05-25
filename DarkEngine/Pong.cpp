@@ -1,4 +1,5 @@
 #if 0
+#define ASYNC
 #include "Engine.h"
 
 class Ground : public Object
@@ -78,7 +79,7 @@ public:
 	BoxCollider* b;
 	RigidComp* rc;
 	Sprite* s;
-	Flipbook* f;
+	Animator* anim;
 	bool over;
 
 	void collide(CollisionSweep col)
@@ -110,22 +111,22 @@ public:
 
 	void OnCreate() override
 	{
-		olc::Sprite* frame1 = new olc::Sprite("GreenTick.png");
-		olc::Sprite* frame2 = new olc::Sprite("GreenTick2.png");
+		
 		Object::OnCreate();
 		over = false;
 		b = new BoxCollider(vec2d(115,55 ), vec2d(3, 3), true);
-		s = new Sprite(b, olc::RED);
-		std::vector<olc::Sprite*> frames = { frame1,frame2 };
-		f = new Flipbook(s, frames, 0.1f, true);
-		s->spr = new olc::Sprite("GreenTick.png");
+		s = new Sprite(b, olc::WHITE);		
+		std::vector<std::string> frames = { "GreenTick.png" };
+		anim = new Animator(s, new std::vector<AnimState*>{new AnimState(Flipbook::AnimFromFiles(s, frames, 0.2f, true), "Idle") });
+		
 		rc = new RigidComp(b, vec2d(0, 0), true);
 		rc->Gravity = false;
 		rc->collideDelegate = std::bind(&Ball::collide, this, std::placeholders::_1);
 		rc->friction = 0;
-		AddComponent(b);
-		AddComponent(f);
+		AddComponent(anim);
+		AddComponent(b);		
 		AddComponent(s);
+		//AddComponent(f);
 		AddComponent(rc);
 		//AddComponent(f);
 	}

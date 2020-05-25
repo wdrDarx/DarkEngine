@@ -15,7 +15,6 @@
 #include <mutex>
 #include <typeinfo>
 #include <future>
-#define ASYNC
 #define OLC_PGE_APPLICATION
 #define OLC_GFX_OPENGL10
 #include "olcPixelGameEngine.h"
@@ -41,7 +40,8 @@ public:
 
 	vec2d()
 	{
-
+		x = 0.f;
+		y = 0.f;
 	}
 
 	vec2d(float ix, float iy)
@@ -195,7 +195,8 @@ class Engine : public olc::PixelGameEngine
 public:
 	Engine* Inst;
 	Camera* Cam;
-
+	olc::Decal* Blank;
+	
 	Engine()
 	{
 		sAppName = "Engine";
@@ -217,6 +218,7 @@ public:
 	bool OnUserCreate() override
 	{
 		Cam = new Camera(vec2d(0, 0));
+		Blank = new olc::Decal(new olc::Sprite("Blank.png"));
 		OnCreate();
 		return true;
 	}
@@ -225,12 +227,7 @@ public:
 	
 	static void EngineUpdate(bool ClearOnFrame, Engine* eng, float fElapsedTime)
 	{
-		if (ClearOnFrame)
-			eng->FillRect(0, 0, eng->ScreenWidth(), eng->ScreenHeight(), olc::BLACK);
-		//int s = sizeof(bounds) / sizeof(vec2d);
-
-
-
+		
 		for (int i = 0; i < eng->Objects.size(); i++)
 		{
 			eng->Objects.at(i)->OnUpdate(fElapsedTime);
@@ -253,7 +250,7 @@ public:
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
-#ifdef ASYNC
+#if defined(ASYNC)
 		std::future<void> update = std::async(std::launch::async, EngineUpdate, ClearOnFrame, this, fElapsedTime);
 #else
 		EngineUpdate(ClearOnFrame, this, fElapsedTime);
@@ -325,19 +322,33 @@ public:
 	PrimitiveComponent* TransformParent;
 	vec2d pos;
 	vec2d scale;
+	vec2d posOffset;
+	vec2d scaleOffset;
 	bool CameraTransform;
+	bool inheritPos;
+	bool inheritScale;
 
 	PrimitiveComponent(PrimitiveComponent* TP)
 	{
 		TransformParent = TP;
 		pos = TP->pos;
 		scale = TP->scale;
+		posOffset = vec2d();
+		scaleOffset = vec2d();
+		CameraTransform = true;
+		inheritPos = true;
+		inheritScale = true;
 	}
 
 	PrimitiveComponent(vec2d po, vec2d s)
 	{
 		pos = po;
 		scale = s;
+		posOffset = vec2d();
+		scaleOffset = vec2d();
+		CameraTransform = true;
+		inheritPos = true;
+		inheritScale = true;
 	}
 
 	virtual void onUpdate(float ET) override
@@ -347,10 +358,17 @@ public:
 		//
 		if (TransformParent != nullptr)
 		{
-			pos.x = TransformParent->pos.x;
-			pos.y = TransformParent->pos.y;
-			scale.x = TransformParent->scale.x;
-			scale.y = TransformParent->scale.y;
+			if (inheritPos)
+			{
+				pos.x = TransformParent->pos.x;
+				pos.y = TransformParent->pos.y;
+			}
+			if (inheritScale)
+			{
+				scale.x = TransformParent->scale.x;
+				scale.y = TransformParent->scale.y;
+			}
+			
 		}
 		if (TransformParent != nullptr)
 		{
@@ -365,6 +383,16 @@ public:
 			pos.x = pos.x - parent->eng->Cam->pos.x;
 			pos.y = pos.y - parent->eng->Cam->pos.y;
 		}
+
+		//
+		if (TransformParent != nullptr)
+		{
+			pos.x += posOffset.x;
+			pos.y += posOffset.y;
+			scale.x += scaleOffset.x;
+			scale.y += scaleOffset.y;
+		}
+		
 	}
 };
 
@@ -375,7 +403,12 @@ public:
 	olc::Pixel color;
 	olc::Sprite* spr;
 	olc::Decal* Dc;
+	olc::Decal* Debug;
+	std::array<olc::vf2d, 4> Points;
+	
+	vec2d Scalar;
 	bool Render;
+	bool optimize;
 
 
 	Sprite(vec2d Pos, vec2d size, olc::Pixel col = olc::WHITE) : PrimitiveComponent(Pos,size)
@@ -383,7 +416,8 @@ public:
 		color = col;
 		Render = true;
 		CameraTransform = true;
-		//spr = new olc::Sprite();
+		Scalar = vec2d(1.f, 1.f);	
+		optimize = true;
 		
 	}
 
@@ -392,14 +426,22 @@ public:
 		color = col;
 		Render = true;
 		CameraTransform = true;
-		//spr = new olc::Sprite();			
+		Scalar = vec2d(1.f, 1.f);	
+		optimize = true;
+		
 	}
 
 	void onAdd() override
 	{
 		PrimitiveComponent::onAdd();
-		if(spr != nullptr)
-		Dc = new olc::Decal(spr);			
+		
+		if (spr != nullptr)
+			Dc = new olc::Decal(spr);
+		else
+		{		
+			Dc = parent->eng->Blank;
+		}	
+		
 	}
 
 
@@ -408,24 +450,32 @@ public:
 		PrimitiveComponent::onUpdate(ET);
 		if (parent->eng != nullptr)
 		{
+			if((pos.x > 0 || pos.x + scale.x < (float)parent->eng->ScreenWidth() && pos.y > 0 || pos.y + scale.y < (float)parent->eng->ScreenHeight()) || !optimize)
 			if (Render)
 			{
-				//Dc = new olc::Decal(spr);
+				
 				if (Dc == nullptr || Dc->sprite == nullptr)
-					parent->eng->FillRect(pos.x, pos.y, scale.x, scale.y, color);
+				{
+				}
 				else
 				{
 					if (Dc->sprite != nullptr)
 					{
-						//Dc = new olc::Decal(spr);
-						parent->eng->DrawDecal(olc::vi2d(pos.x, pos.y), Dc);
+						Points[0] = olc::vf2d( pos.x + ((1 - Scalar.x) / 2 * scale.x) , pos.y + ((1 - Scalar.y) / 2) * scale.y);
+						Points[1] = olc::vf2d(pos.x + ((1 - Scalar.x) / 2 * scale.x), pos.y + (scale.y * (Scalar.y + 1) / 2));
+						Points[2] = olc::vf2d(pos.x + (scale.x * (Scalar.x+1) /2 ), pos.y + (scale.y * (Scalar.y + 1) / 2));
+						Points[3] = olc::vf2d(pos.x + (scale.x * (Scalar.x+1)/2), pos.y + ((1 - Scalar.y) / 2) * scale.y);
+						
+						parent->eng->DrawWarpedDecal(Dc, Points, color);
+#if defined(DEBUGMODE)
+						parent->eng->DrawDecal(Points[0], Debug, { 0.01f, 0.01f }, olc::YELLOW);
+						parent->eng->DrawDecal(Points[1], Debug, { 0.01f,0.01f }, olc::YELLOW);
+						parent->eng->DrawDecal(Points[2], Debug, { 0.01f,0.01f }, olc::BLUE);
+						parent->eng->DrawDecal(Points[3], Debug, { 0.01f,0.01f }, olc::BLUE);
+#endif
 					}
-				}	
-				//parent->eng->SetPixelMode(olc::Pixel::Mode::NORMAL);
-				//Dc = new olc::Decal(spr);
-			}
-
-			
+				}				
+			}			
 		}
 	}
 
@@ -442,7 +492,7 @@ public:
 	
 	Sprite* ref;
 
-	Flipbook(Sprite* r, std::vector<olc::Decal*> F, float ct, bool l)
+	Flipbook(Sprite* r, std::vector<olc::Decal*> F, float ct, bool l) : Component()
 	{
 		Frames = F;
 		Changetime = ct;
@@ -451,6 +501,18 @@ public:
 		ref = r;
 		play = true;
 		
+	}
+
+	static Flipbook* AnimFromFiles(Sprite* spr, std::vector<std::string> files, float ct, bool l)
+	{
+		std::vector<olc::Decal*> Frames;
+		for (int i = 0; i < files.size(); ++i)
+		{
+			olc::Decal* d = new olc::Decal(new olc::Sprite(files.at(i)));
+			Frames.push_back(d);
+		}
+		Flipbook* f = new Flipbook(spr, Frames, ct, l);
+		return f;
 	}
 
 	void changeFrames()
@@ -464,13 +526,10 @@ public:
 		}
 		
 		if (play)
-		{		
-						
+		{								
 			ref->Dc = Frames.at(index);
-			ref->Dc->Update();
-						
+			ref->Dc->Update();						
 		}
-		
 		
 	}
 
@@ -495,6 +554,54 @@ public:
 
 private: 
 		Delay* d;
+};
+
+struct AnimState
+{
+	std::string name;
+	Flipbook* State;
+
+	AnimState(Flipbook* f, std::string n)
+	{
+		State = f;
+		name = n;
+	}
+};
+
+class Animator : public Component
+{
+public:
+	Sprite* target;
+	std::vector<AnimState*>* States;
+	AnimState* currentState;
+	Animator(Sprite* s, std::vector<AnimState*>* S)
+	{
+		target = s;
+		States = S;		
+	}
+
+	void ChangeStates(std::string name)
+	{
+		for (int i = 0; i < States->size(); ++i)
+		{
+			if (States->at(i)->name == name)
+			{
+				if (States->at(i)->State->parent == nullptr)
+					parent->AddComponent(States->at(i)->State);
+				States->at(i)->State->ref = target;
+				States->at(i)->State->play = true;
+				currentState = States->at(i);								
+			}
+			else
+				States->at(i)->State->play = false;
+		}
+	}
+
+	void onAdd() override
+	{
+		Component::onAdd();
+		ChangeStates(States->at(0)->name);
+	}
 };
 
 class BoxCollider : public PrimitiveComponent
@@ -591,24 +698,17 @@ public:
 		
 		
 	}
-	
-	//static std::mutex colMutex;
-
+		
 	virtual void OnCollide(CollisionSweep col)
 	{
 		if(collideDelegate != nullptr)
-		collideDelegate(col);		
-		//collisionChecks.clear();
+		collideDelegate(col);				
 	}
 
 	static void CollisionCheck(float ET, RigidComp* rc)
 	{
-		//std::lock_guard<std::mutex> lock(colMutex);
-
 		BoxCollider* Box = rc->Box;
-		
-		//std::lock_guard<std::mutex> guard(colMutex);
-
+			
 		Box->pos.x += rc->vel.x * ET;
 		CollisionSweep c1 = Box->CollisionCheck(Box);
 		if (c1.collides)
@@ -650,17 +750,13 @@ public:
 				{
 					calculate = false; parent->eng->RemoveObject(parent);
 				}
-				//if (abs(vel.x) < 0.1f && abs(vel.y) < 0.1f && !onGround) calculate = false;
-
-				
+								
 			}
 			if (calculate)
 			{
 
-#ifdef ASYNC
-				std::future<void> col = std::async(std::launch::async, CollisionCheck, ET, this);
-				//std::thread t1(&RigidComp::CollisionCheck, ET, this);
-				//t1.join();
+#if defined(ASYNC)
+				std::future<void> col = std::async(std::launch::async, CollisionCheck, ET, this);				
 #else
 				CollisionCheck(ET,this);
 #endif
@@ -671,7 +767,6 @@ public:
 	}
 	// bind like this -> rc->collideDelegate = std::bind(&class::functionName, this, std::placeholders::_1);
 	std::function<void(CollisionSweep)> collideDelegate;
-	//std::vector<std::future<void>> collisionChecks;
 };
 
 
