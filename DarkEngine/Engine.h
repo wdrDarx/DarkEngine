@@ -17,6 +17,7 @@
 #include <future>
 #define OLC_PGE_APPLICATION
 #define OLC_GFX_OPENGL10
+constexpr float BLANKSIZE = 0.00092592592f;
 #include "olcPixelGameEngine.h"
 
 
@@ -490,10 +491,10 @@ public:
 
 						parent->eng->DrawWarpedDecal(Dc, Points, color);
 #if defined(DEBUGMODE)
-						parent->eng->DrawDecal(Points[0], Debug, { 0.01f, 0.01f }, olc::YELLOW);
-						parent->eng->DrawDecal(Points[1], Debug, { 0.01f,0.01f }, olc::YELLOW);
-						parent->eng->DrawDecal(Points[2], Debug, { 0.01f,0.01f }, olc::YELLOW);
-						parent->eng->DrawDecal(Points[3], Debug, { 0.01f,0.01f }, olc::YELLOW);														
+						parent->eng->DrawDecal(Points[0], Debug, { BLANKSIZE * ScreenScale.x / scale.x  * 3,  BLANKSIZE * ScreenScale.y / scale.y * 3 }, olc::YELLOW);
+						parent->eng->DrawDecal(Points[1], Debug, { BLANKSIZE * ScreenScale.x / scale.x * 3,  BLANKSIZE * ScreenScale.y / scale.y * 3 }, olc::YELLOW);
+						parent->eng->DrawDecal(Points[2], Debug, { BLANKSIZE * ScreenScale.x / scale.x * 3,  BLANKSIZE * ScreenScale.y / scale.y * 3 }, olc::YELLOW);
+						parent->eng->DrawDecal(Points[3], Debug, { BLANKSIZE * ScreenScale.x / scale.x * 3,  BLANKSIZE * ScreenScale.y / scale.y * 3 }, olc::YELLOW);
 #endif
 					}
 				}				
@@ -673,12 +674,13 @@ public:
 
 	void onUpdate(float ET) override
 	{
-#if defined(DEBUGMODE)
 		PrimitiveComponent::onUpdate(ET);
-		parent->eng->DrawDecal({ ScreenPos.x,  ScreenPos.y }, parent->eng->Blank, { 0.01f,0.01f }, olc::BLUE);
-		parent->eng->DrawDecal({ ScreenPos.x + ScreenScale.x,  ScreenPos.y }, parent->eng->Blank, { 0.01f,0.01f }, olc::BLUE);
-		parent->eng->DrawDecal({ ScreenPos.x + ScreenScale.x,  ScreenPos.y + ScreenScale.y }, parent->eng->Blank, { 0.01f,0.01f }, olc::BLUE);
-		parent->eng->DrawDecal({ ScreenPos.x ,  ScreenPos.y + ScreenScale.y }, parent->eng->Blank, { 0.01f,0.01f }, olc::BLUE);
+#if defined(DEBUGMODE)
+		
+		parent->eng->DrawDecal({ ScreenPos.x,  ScreenPos.y }, parent->eng->Blank, { BLANKSIZE * ScreenScale.x , BLANKSIZE }, olc::BLUE);
+		parent->eng->DrawDecal({ ScreenPos.x + ScreenScale.x,  ScreenPos.y }, parent->eng->Blank, { BLANKSIZE ,BLANKSIZE * ScreenScale.y }, olc::BLUE);
+		parent->eng->DrawDecal({ ScreenPos.x + ScreenScale.x,  ScreenPos.y + ScreenScale.y }, parent->eng->Blank, { BLANKSIZE * -ScreenScale.x ,BLANKSIZE}, olc::BLUE);
+		parent->eng->DrawDecal({ ScreenPos.x ,  ScreenPos.y + ScreenScale.y }, parent->eng->Blank, { BLANKSIZE  ,BLANKSIZE * -ScreenScale.y }, olc::BLUE);
 #endif
 	}
 
