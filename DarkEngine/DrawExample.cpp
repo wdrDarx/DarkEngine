@@ -21,8 +21,8 @@ public:
 	
 	void collide(CollisionSweep col)
 	{
-		//if(col.Other->GetComponent<BoxCollider>(col.Other->Components)->pos.y > b->pos.y)
-		//rc->collides = false;
+		if(col.Other->GetComponent<BoxCollider>(col.Other->Components)->pos.y > b->pos.y)
+		rc->collides = false;
 		 
 	}
 

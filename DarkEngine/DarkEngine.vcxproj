@@ -130,6 +130,7 @@
     <ClCompile Include="Animation.cpp" />
     <ClCompile Include="DrawExample.cpp" />
     <ClCompile Include="Osu.cpp" />
+    <ClCompile Include="Platformer.cpp" />
     <ClCompile Include="Pong.cpp" />
     <ClCompile Include="Source.cpp" />
   </ItemGroup>

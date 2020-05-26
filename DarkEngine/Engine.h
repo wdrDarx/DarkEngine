@@ -3,7 +3,6 @@
 #include <chrono>
 #include <vector>
 #include <typeinfo>
-//#include <windows.h>
 #include <math.h>
 #include <cstdint>
 #include <algorithm>
@@ -12,6 +11,7 @@
 #include <functional>
 #include <array>
 #include <thread>
+#include<cmath>
 #include <mutex>
 #include <typeinfo>
 #include <future>
@@ -181,12 +181,28 @@ class Camera : public Object
 {
 public:
 	vec2d pos;
+	float zoom;
 	Camera(vec2d p)
 	{
 		pos = p;
+		zoom = 1.f;
 	}
 };
 
+struct RayHit
+{
+public:
+	vec2d HitPos;
+	Object* HitObject;
+
+	RayHit(vec2d p, Object* o)
+	{
+		HitPos = p;
+		HitObject = o;
+	}
+
+
+};
 
 
 
@@ -235,6 +251,7 @@ public:
 
 		eng->OnUpdate(fElapsedTime);
 	}
+
 
 	virtual bool OnCreate()
 	{
@@ -324,6 +341,8 @@ public:
 	vec2d scale;
 	vec2d posOffset;
 	vec2d scaleOffset;
+	vec2d ScreenPos;
+	vec2d ScreenScale;
 	bool CameraTransform;
 	bool inheritPos;
 	bool inheritScale;
@@ -338,6 +357,8 @@ public:
 		CameraTransform = true;
 		inheritPos = true;
 		inheritScale = true;
+		ScreenPos = TP->pos;
+		scale = TP->scale;
 	}
 
 	PrimitiveComponent(vec2d po, vec2d s)
@@ -349,6 +370,8 @@ public:
 		CameraTransform = true;
 		inheritPos = true;
 		inheritScale = true;
+		ScreenPos = po;
+		ScreenScale = s;
 	}
 
 	virtual void onUpdate(float ET) override
@@ -370,20 +393,6 @@ public:
 			}
 			
 		}
-		if (TransformParent != nullptr)
-		{
-			if (!TransformParent->CameraTransform && CameraTransform)
-			{
-				pos.x = pos.x - parent->eng->Cam->pos.x;
-				pos.y = pos.y - parent->eng->Cam->pos.y;
-			}
-		}
-		else if (CameraTransform)
-		{
-			pos.x = pos.x - parent->eng->Cam->pos.x;
-			pos.y = pos.y - parent->eng->Cam->pos.y;
-		}
-
 		//
 		if (TransformParent != nullptr)
 		{
@@ -391,8 +400,20 @@ public:
 			pos.y += posOffset.y;
 			scale.x += scaleOffset.x;
 			scale.y += scaleOffset.y;
+			
 		}
-		
+		//
+		ScreenPos = pos;
+		ScreenScale = scale;
+	
+		if (CameraTransform)
+		{
+			ScreenScale.x *= parent->eng->Cam->zoom;
+			ScreenScale.y *= parent->eng->Cam->zoom;
+			ScreenPos.x = parent->eng->Cam->zoom * (ScreenPos.x - parent->eng->Cam->pos.x);
+			ScreenPos.y = parent->eng->Cam->zoom * (ScreenPos.y - parent->eng->Cam->pos.y);
+		}
+				
 	}
 };
 
@@ -441,6 +462,7 @@ public:
 		{		
 			Dc = parent->eng->Blank;
 		}	
+		Debug = parent->eng->Blank;
 		
 	}
 
@@ -450,7 +472,7 @@ public:
 		PrimitiveComponent::onUpdate(ET);
 		if (parent->eng != nullptr)
 		{
-			if((pos.x > 0 || pos.x + scale.x < (float)parent->eng->ScreenWidth() && pos.y > 0 || pos.y + scale.y < (float)parent->eng->ScreenHeight()) || !optimize)
+			if((ScreenPos.x > 0 || ScreenPos.x + ScreenScale.x < (float)parent->eng->ScreenWidth() && ScreenPos.y > 0 || ScreenPos.y + ScreenScale.y < (float)parent->eng->ScreenHeight()) || !optimize)
 			if (Render)
 			{
 				
@@ -461,17 +483,17 @@ public:
 				{
 					if (Dc->sprite != nullptr)
 					{
-						Points[0] = olc::vf2d( pos.x + ((1 - Scalar.x) / 2 * scale.x) , pos.y + ((1 - Scalar.y) / 2) * scale.y);
-						Points[1] = olc::vf2d(pos.x + ((1 - Scalar.x) / 2 * scale.x), pos.y + (scale.y * (Scalar.y + 1) / 2));
-						Points[2] = olc::vf2d(pos.x + (scale.x * (Scalar.x+1) /2 ), pos.y + (scale.y * (Scalar.y + 1) / 2));
-						Points[3] = olc::vf2d(pos.x + (scale.x * (Scalar.x+1)/2), pos.y + ((1 - Scalar.y) / 2) * scale.y);
-						
+						Points[0] = olc::vf2d(ScreenPos.x + ((1 - Scalar.x) / 2 * ScreenScale.x), ScreenPos.y + ((1 - Scalar.y) / 2) * ScreenScale.y);
+						Points[1] = olc::vf2d(ScreenPos.x + ((1 - Scalar.x) / 2 * ScreenScale.x), ScreenPos.y + (ScreenScale.y * (Scalar.y + 1) / 2));
+						Points[2] = olc::vf2d(ScreenPos.x + (ScreenScale.x * (Scalar.x + 1) / 2), ScreenPos.y + (ScreenScale.y * (Scalar.y + 1) / 2));
+						Points[3] = olc::vf2d(ScreenPos.x + (ScreenScale.x * (Scalar.x + 1) / 2), ScreenPos.y + ((1 - Scalar.y) / 2) * ScreenScale.y);
+
 						parent->eng->DrawWarpedDecal(Dc, Points, color);
 #if defined(DEBUGMODE)
 						parent->eng->DrawDecal(Points[0], Debug, { 0.01f, 0.01f }, olc::YELLOW);
 						parent->eng->DrawDecal(Points[1], Debug, { 0.01f,0.01f }, olc::YELLOW);
-						parent->eng->DrawDecal(Points[2], Debug, { 0.01f,0.01f }, olc::BLUE);
-						parent->eng->DrawDecal(Points[3], Debug, { 0.01f,0.01f }, olc::BLUE);
+						parent->eng->DrawDecal(Points[2], Debug, { 0.01f,0.01f }, olc::YELLOW);
+						parent->eng->DrawDecal(Points[3], Debug, { 0.01f,0.01f }, olc::YELLOW);														
 #endif
 					}
 				}				
@@ -590,6 +612,8 @@ public:
 					parent->AddComponent(States->at(i)->State);
 				States->at(i)->State->ref = target;
 				States->at(i)->State->play = true;
+				if (!States->at(i)->State->loop)
+					States->at(i)->State->playFrame(States->at(i)->State);
 				currentState = States->at(i);								
 			}
 			else
@@ -646,6 +670,18 @@ public:
 			caller->pos.y + caller->scale.y > check->pos.y + 1 && caller->Collides && check->Collides) return true;
 		else return false;
 	}
+
+	void onUpdate(float ET) override
+	{
+#if defined(DEBUGMODE)
+		PrimitiveComponent::onUpdate(ET);
+		parent->eng->DrawDecal({ ScreenPos.x,  ScreenPos.y }, parent->eng->Blank, { 0.01f,0.01f }, olc::BLUE);
+		parent->eng->DrawDecal({ ScreenPos.x + ScreenScale.x,  ScreenPos.y }, parent->eng->Blank, { 0.01f,0.01f }, olc::BLUE);
+		parent->eng->DrawDecal({ ScreenPos.x + ScreenScale.x,  ScreenPos.y + ScreenScale.y }, parent->eng->Blank, { 0.01f,0.01f }, olc::BLUE);
+		parent->eng->DrawDecal({ ScreenPos.x ,  ScreenPos.y + ScreenScale.y }, parent->eng->Blank, { 0.01f,0.01f }, olc::BLUE);
+#endif
+	}
+
 
 	CollisionSweep CollisionCheck(BoxCollider* s)
 	{
@@ -771,7 +807,57 @@ public:
 
 
 
+namespace DEngine
+{
 
+	static std::vector<std::string> SpriteNames(std::string pre, int start, int end, std::string post)
+	{
+		std::vector<std::string> temp;
+		for (int i = start; i < end; i++)
+		{
+			temp.push_back(pre + std::to_string(i) + post);
+		}
+		return temp;
+	}
+	static float VecLength(vec2d vec)
+	{
+		float one = std::pow((float)abs(vec.x), 2.f);
+		float two = std::pow((float)abs(vec.y), 2.f);
+		return std::sqrt(one + two);
+	}
+
+	static RayHit RayTrace(Engine * eng, vec2d start, vec2d end)
+	{
+		float length = VecLength(vec2d(end.x - start.x, end.y - start.y));
+		std::vector<Object*> Colliders;
+
+		for (int i = 0; i < eng->Objects.size(); i++)
+		{
+			if (eng->Objects.at(i)->GetComponent<BoxCollider>(eng->Objects.at(i)->Components) != nullptr)
+				Colliders.push_back(eng->Objects.at(i));
+		}
+		for (int i = 0; i < std::floor(length); i++)
+		{
+			vec2d check = vec2d((start.x + end.x) * i / length, (start.y + end.y) * i / length);
+			for (int j = 0; j < Colliders.size(); j++)
+			{
+				BoxCollider* Box = Colliders.at(j)->GetComponent<BoxCollider>(Colliders.at(j)->Components);
+				if (Box != nullptr && Box->Collides && check.x > Box->pos.x && check.x < (Box->pos.x + Box->scale.x) && check.y > Box->pos.y && check.y < (Box->pos.y + Box->scale.y))
+				{
+#if defined(DEBUGMODE)
+					eng->DrawLine(start.x, start.y, check.x, check.y);
+					std::cout << check.x << std::endl;
+#endif
+					return RayHit(check, Colliders.at(j));
+				}
+
+			}
+			//std::cout << check.y << std::endl;
+
+		}
+	}
+
+}
 
 
 
