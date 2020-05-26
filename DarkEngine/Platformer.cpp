@@ -1,7 +1,7 @@
 #if 1
 
-#define ASYNC
-#define DEBUGMODE
+//#define ASYNC
+//#define DEBUGMODE
 #include "Engine.h"
 
 class Sky : public Object
@@ -38,10 +38,10 @@ public:
 	{
 		Object::OnCreate();
 
-		b = new BoxCollider(vec2d(150, 150), vec2d(40, 100), true);
+		b = new BoxCollider(vec2d(0, 0), vec2d(40, 95), true);
 		s = new Sprite(b, olc::WHITE);
-		s->scaleOffset = vec2d(60.f, 0.f);		
-		s->posOffset = vec2d(-27.f, 0.f);
+		s->scaleOffset = vec2d(60.f, 5.f);		
+		s->posOffset = vec2d(-30.f, -1.f);
 		rc = new RigidComp(b, vec2d(0, 0), true);
 		rc->Gravity = true;
 		std::vector<std::string> IdleAnims = { "Human/tile064.png" };
@@ -83,10 +83,12 @@ class Ground : public Object
 {
 public:
 	vec2d pos;
+	olc::Sprite* sp;
 	
-	Ground(vec2d p)
+	Ground(vec2d p, olc::Sprite* s)
 	{
 		pos = p;		
+		sp = s;
 	}
 
 	BoxCollider* b;
@@ -97,7 +99,8 @@ public:
 		Object::OnCreate();
 		b = new BoxCollider(pos, vec2d(100,100), true);
 		s = new Sprite(b);
-		s->spr = new olc::Sprite("DirtBlock.png");
+		s->spr = sp;
+		
 		AddComponent(b);
 		AddComponent(s);
 	}
@@ -112,7 +115,14 @@ public:
 	Player* Pl;
 	Ground* Gr;
 	Sky* Sk;	
+	 olc::Sprite* dirt = new olc::Sprite("DirtBlock.png");
 
+
+	void makeGround(vec2d pos)
+	{
+		Gr = new Ground(pos, dirt);
+		CreateObject(Gr);
+	}
 	bool OnCreate() override
 	{		
 
@@ -125,27 +135,8 @@ public:
 	CreateObject(Pl);
 
 	// ground
-	Gr = new Ground(vec2d(0, 500));
-	CreateObject(Gr);
-
-	//Ground2 
-	Gr = new Ground(vec2d(100, 500));
-	CreateObject(Gr);
-	Gr = new Ground(vec2d(200, 500));
-	CreateObject(Gr);
-	Gr = new Ground(vec2d(300, 500));
-	CreateObject(Gr);
-	Gr = new Ground(vec2d(400, 500));
-	CreateObject(Gr);
-	Gr = new Ground(vec2d(500, 500));
-	CreateObject(Gr);
-	Gr = new Ground(vec2d(600, 500));
-	CreateObject(Gr);
-	Gr = new Ground(vec2d(500, 400));
-	CreateObject(Gr);
-
-
-
+	makeGround({ 0, 500 });
+		
 	Gravity = 1500.f;
 
 	return true;
@@ -172,8 +163,37 @@ public:
 		}
 		if (GetMouse(0).bPressed)
 		{
-			DEngine::RayTrace(this, vec2d(Pl->b->pos.x, Pl->b->pos.y + Pl->b->scale.y + 10), vec2d(Pl->b->pos.x, Pl->b->pos.y  +Pl->b->scale.y + 100));
+			vec2d v = DEngine::ScreenToWorld(this, vec2d((float)GetMouseX(), (float)GetMouseY()));
+			RayHit check = DEngine::PointCollisionCheck(this, v);
+			if (check.Hit)
+				RemoveObject(check.HitObject);
+			
 		}
+		if (GetMouse(1).bPressed)
+		{
+			vec2d v = DEngine::ScreenToWorld(this, vec2d((float)GetMouseX(), (float)GetMouseY()));
+			vec2d v2 = DEngine::Snap(v, vec2d(100, 100));
+			BoxCollider* check = new BoxCollider(v2, vec2d(100, 100), true);
+			Objects.at(0)->AddComponent(check);
+			
+			if (!check->CollisionCheck(check).collides)
+			{				
+				Ground* G = new Ground(v2, dirt);
+				CreateObject(G);
+			}
+			Objects.at(0)->RemoveComponent(check);
+			
+		}
+		if (GetKey(olc::Key::UP).bHeld)
+		{
+			Cam->zoom *= 1 + 0.1 * ET;
+		}
+		if (GetKey(olc::Key::DOWN).bHeld)
+		{
+			Cam->zoom *= 1 - 0.1 * ET;
+			
+		}
+		
 		
 		return true;
 

@@ -193,13 +193,17 @@ public:
 struct RayHit
 {
 public:
+	vec2d StartPos;
 	vec2d HitPos;
 	Object* HitObject;
+	bool Hit;
 
-	RayHit(vec2d p, Object* o)
+	RayHit(bool h,vec2d p, Object* o)
 	{
 		HitPos = p;
 		HitObject = o;
+		Hit = h;
+		StartPos = vec2d(0, 0);
 	}
 
 
@@ -213,6 +217,8 @@ public:
 	Engine* Inst;
 	Camera* Cam;
 	olc::Decal* Blank;
+	int Background;
+	int Foreground;
 	
 	Engine()
 	{
@@ -236,6 +242,8 @@ public:
 	{
 		Cam = new Camera(vec2d(0, 0));
 		Blank = new olc::Decal(new olc::Sprite("Blank.png"));
+		Background = CreateLayer();
+		Foreground = CreateLayer();
 		OnCreate();
 		return true;
 	}
@@ -427,6 +435,7 @@ public:
 	olc::Decal* Dc;
 	olc::Decal* Debug;
 	std::array<olc::vf2d, 4> Points;
+	int Layer;
 	
 	vec2d Scalar;
 	bool Render;
@@ -440,6 +449,8 @@ public:
 		CameraTransform = true;
 		Scalar = vec2d(1.f, 1.f);	
 		optimize = true;
+		Layer = 0;
+		
 		
 	}
 
@@ -450,6 +461,7 @@ public:
 		CameraTransform = true;
 		Scalar = vec2d(1.f, 1.f);	
 		optimize = true;
+		Layer = 0;
 		
 	}
 
@@ -464,6 +476,10 @@ public:
 			Dc = parent->eng->Blank;
 		}	
 		Debug = parent->eng->Blank;
+
+		//if(Layer == 0)
+	//	Layer = parent->eng->Foreground;
+		//parent->eng->EnableLayer(Layer, true);
 		
 	}
 
@@ -488,8 +504,8 @@ public:
 						Points[1] = olc::vf2d(ScreenPos.x + ((1 - Scalar.x) / 2 * ScreenScale.x), ScreenPos.y + (ScreenScale.y * (Scalar.y + 1) / 2));
 						Points[2] = olc::vf2d(ScreenPos.x + (ScreenScale.x * (Scalar.x + 1) / 2), ScreenPos.y + (ScreenScale.y * (Scalar.y + 1) / 2));
 						Points[3] = olc::vf2d(ScreenPos.x + (ScreenScale.x * (Scalar.x + 1) / 2), ScreenPos.y + ((1 - Scalar.y) / 2) * ScreenScale.y);
-
-						parent->eng->DrawWarpedDecal(Dc, Points, color);
+						
+						parent->eng->DrawWarpedDecal(Dc, Points, color);						
 #if defined(DEBUGMODE)
 						parent->eng->DrawDecal(Points[0], Debug, { BLANKSIZE * ScreenScale.x / scale.x  * 3,  BLANKSIZE * ScreenScale.y / scale.y * 3 }, olc::YELLOW);
 						parent->eng->DrawDecal(Points[1], Debug, { BLANKSIZE * ScreenScale.x / scale.x * 3,  BLANKSIZE * ScreenScale.y / scale.y * 3 }, olc::YELLOW);
@@ -709,6 +725,131 @@ public:
 	}
 };
 
+namespace DEngine
+{
+
+	static std::vector<std::string> SpriteNames(std::string pre, int start, int end, std::string post)
+	{
+		std::vector<std::string> temp;
+		for (int i = start; i < end; i++)
+		{
+			temp.push_back(pre + std::to_string(i) + post);
+		}
+		return temp;
+	}
+	static float VecLength(vec2d vec)
+	{
+		float one = std::pow((float)abs(vec.x), 2.f);
+		float two = std::pow((float)abs(vec.y), 2.f);
+		return std::sqrt(one + two);
+	}
+
+	static vec2d WorldToScreen(Engine* eng,vec2d pos)
+	{
+		vec2d ScreenPos = pos;
+		ScreenPos.x = eng->Cam->zoom * (ScreenPos.x - eng->Cam->pos.x);
+		ScreenPos.y = eng->Cam->zoom * (ScreenPos.y - eng->Cam->pos.y);
+		return ScreenPos;
+	}
+
+	static vec2d ScreenToWorld(Engine* eng, vec2d pos)
+	{
+		vec2d WorldPos = pos;
+		WorldPos.x = (WorldPos.x / eng->Cam->zoom) + eng->Cam->pos.x;
+		WorldPos.y = (WorldPos.y / eng->Cam->zoom) + eng->Cam->pos.y;
+		return WorldPos;
+	}
+
+	static vec2d Snap(vec2d init, vec2d bounds)
+	{
+		vec2d v = init;
+		v.x -= (int)v.x % (int)bounds.x;
+		v.y -= (int)v.y % (int)bounds.y;
+		return v;
+	}
+
+	static RayHit PointCollisionCheck(Engine* eng, vec2d check)
+	{
+		RayHit ray = RayHit(false, vec2d(0, 0), nullptr);
+		std::vector<Object*> Colliders;
+
+		for (int i = 0; i < eng->Objects.size(); i++)
+		{
+			if (eng->Objects.at(i)->GetComponent<BoxCollider>(eng->Objects.at(i)->Components) != nullptr)
+				Colliders.push_back(eng->Objects.at(i));
+		}
+		for (int j = 0; j < Colliders.size(); j++)
+		{
+			BoxCollider* Box = Colliders.at(j)->GetComponent<BoxCollider>(Colliders.at(j)->Components);
+
+			if (Box != nullptr && Box->Collides && check.x > Box->pos.x && check.x < (Box->pos.x + Box->scale.x) && check.y > Box->pos.y && check.y < (Box->pos.y + Box->scale.y))
+			{
+				ray = RayHit(true, check, Colliders.at(j));
+			}
+
+		}
+		return ray;
+	}
+
+	static RayHit RayTrace(Engine * eng, vec2d start, vec2d end)
+	{
+		RayHit* Ray = new RayHit(false, vec2d(0, 0), nullptr);
+		float length = VecLength(vec2d(end.x - start.x, end.y - start.y));
+
+		std::vector<Object*> Colliders;
+
+		for (int i = 0; i < eng->Objects.size(); i++)
+		{
+			if (eng->Objects.at(i)->GetComponent<BoxCollider>(eng->Objects.at(i)->Components) != nullptr)
+				Colliders.push_back(eng->Objects.at(i));
+		}
+		for (int i = 0; i < (int)length; i++)
+		{
+			vec2d check = vec2d(start.x + ((end.x - start.x) * i / length), start.y + ((end.y - start.y) * i / length));
+			for (int j = 0; j < Colliders.size(); j++)
+			{
+				BoxCollider* Box = Colliders.at(j)->GetComponent<BoxCollider>(Colliders.at(j)->Components);
+
+				if (Box != nullptr && Box->Collides && check.x > Box->pos.x && check.x < (Box->pos.x + Box->scale.x) && check.y > Box->pos.y && check.y < (Box->pos.y + Box->scale.y))
+				{
+					Ray = new RayHit(true, check, Colliders.at(j));
+					Ray->StartPos = start;
+				}
+
+			}
+		}				
+		return *Ray;
+	}
+
+	class Debug : public Object
+	{
+	public:
+		using Object::Object;
+		
+		vec2d p1;
+		vec2d p2;
+
+		void OnUpdate(float ET) override
+		{
+			Object::OnUpdate(ET);
+			vec2d p11 = DEngine::WorldToScreen(eng,p1);
+			vec2d p21 = DEngine::WorldToScreen(eng,p2);
+			eng->DrawDecal({p11.x, p11.y }, eng->Blank, { BLANKSIZE * 10 ,BLANKSIZE * 10 }, olc::RED);
+			eng->DrawDecal({ p21.x, p21.y }, eng->Blank, { BLANKSIZE * 10 ,BLANKSIZE * 10 }, olc::DARK_RED);
+		}
+	};
+
+	static void DrawDebugRay(Engine* eng,  RayHit& ray)
+	{
+#if defined(DEBUGMODE)
+		Debug* D = new Debug();
+		D->p1 = ray.StartPos;
+		D->p2 = ray.HitPos;
+		eng->CreateObject(D);
+#endif
+	}
+}
+
 
 class RigidComp : public PrimitiveComponent
 {
@@ -719,6 +860,7 @@ public:
 	vec2d vel;
 	bool onGround;
 	float friction;
+	float GroundLength;
 	bool optimize;
 	BoxCollider* Box;
 
@@ -733,7 +875,7 @@ public:
 		onGround = false;
 		friction = 1;
 		optimize = false;
-		
+		GroundLength = 10;
 		
 	}
 		
@@ -762,8 +904,13 @@ public:
 		{
 			Box->pos.y -= rc->vel.y * ET;
 			rc->vel.y -= rc->vel.y * ET;
-			rc->onGround = true;
 			rc->OnCollide(c1);
+			// check ground
+			RayHit R1 = DEngine::RayTrace(rc->parent->eng, vec2d(rc->pos.x, rc->pos.y + rc->scale.y), vec2d(rc->pos.x, rc->pos.y + rc->scale.y + rc->GroundLength));
+			//DEngine::DrawDebugRay(rc->parent->eng, R1);
+			RayHit R2 = DEngine::RayTrace(rc->parent->eng, vec2d(rc->pos.x + rc->scale.x, rc->pos.y + rc->scale.y), vec2d(rc->pos.x + rc->scale.x, rc->pos.y + rc->scale.y + rc->GroundLength));
+			if(R1.Hit || R2.Hit)
+			rc->onGround = true;			
 		}
 		else rc->onGround = false;
 
@@ -809,57 +956,7 @@ public:
 
 
 
-namespace DEngine
-{
 
-	static std::vector<std::string> SpriteNames(std::string pre, int start, int end, std::string post)
-	{
-		std::vector<std::string> temp;
-		for (int i = start; i < end; i++)
-		{
-			temp.push_back(pre + std::to_string(i) + post);
-		}
-		return temp;
-	}
-	static float VecLength(vec2d vec)
-	{
-		float one = std::pow((float)abs(vec.x), 2.f);
-		float two = std::pow((float)abs(vec.y), 2.f);
-		return std::sqrt(one + two);
-	}
-
-	static RayHit RayTrace(Engine * eng, vec2d start, vec2d end)
-	{
-		float length = VecLength(vec2d(end.x - start.x, end.y - start.y));
-		std::vector<Object*> Colliders;
-
-		for (int i = 0; i < eng->Objects.size(); i++)
-		{
-			if (eng->Objects.at(i)->GetComponent<BoxCollider>(eng->Objects.at(i)->Components) != nullptr)
-				Colliders.push_back(eng->Objects.at(i));
-		}
-		for (int i = 0; i < std::floor(length); i++)
-		{
-			vec2d check = vec2d((start.x + end.x) * i / length, (start.y + end.y) * i / length);
-			for (int j = 0; j < Colliders.size(); j++)
-			{
-				BoxCollider* Box = Colliders.at(j)->GetComponent<BoxCollider>(Colliders.at(j)->Components);
-				if (Box != nullptr && Box->Collides && check.x > Box->pos.x && check.x < (Box->pos.x + Box->scale.x) && check.y > Box->pos.y && check.y < (Box->pos.y + Box->scale.y))
-				{
-#if defined(DEBUGMODE)
-					eng->DrawLine(start.x, start.y, check.x, check.y);
-					std::cout << check.x << std::endl;
-#endif
-					return RayHit(check, Colliders.at(j));
-				}
-
-			}
-			//std::cout << check.y << std::endl;
-
-		}
-	}
-
-}
 
 
 
