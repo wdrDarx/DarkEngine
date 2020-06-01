@@ -1,7 +1,7 @@
 #if 1
 
-//#define ASYNC
-//#define DEBUGMODE
+#define ASYNC
+#define DEBUGMODE
 #include "Engine.h"
 
 class Sky : public Object
@@ -17,6 +17,52 @@ public:
 		s->CameraTransform = false;
 		s->spr = new olc::Sprite("Dinosaur/Sky.png");
 		AddComponent(s);
+	}
+
+};
+
+class Bomb : public Object
+{
+public:
+	vec2d p;
+	vec2d vel;
+	Bomb(vec2d pp, vec2d v)
+	{
+		p = pp;
+		vel = v;
+	}
+
+	BoxCollider* b;
+	Sprite* s;
+	RigidComp* rc;
+
+
+	void explode()
+	{
+		b->scale = vec2d(300, 300);
+		b->pos.x -= 150;
+		b->pos.y -= 150;
+		for (int i = 0; i < b->BoundingColliders().size(); i++)
+		{
+			if(b->BoundingColliders().at(i) != b)
+			eng->RemoveObject(b->BoundingColliders().at(i)->parent);
+		}
+		eng->RemoveObject(this);
+	}
+	void OnCreate() override
+	{
+		b = new BoxCollider(p, vec2d(100, 100), true);
+		s = new Sprite(b);
+		s->spr = new olc::Sprite("Bomb.png");
+		rc = new RigidComp(b, vel, true);
+		rc->Gravity = true;
+	
+		AddComponent(b);
+		AddComponent(s);
+		AddComponent(rc);
+		Delay* d = new Delay(1.f);
+		d->DelayDelegate = std::bind(&Bomb::explode, this);
+		eng->CreateObject(d);
 	}
 
 };
@@ -61,8 +107,8 @@ public:
 	void OnUpdate(float ET) override
 	{
 		Object::OnUpdate(ET);
-		eng->Cam->pos.x = b->pos.x + b->scale.x / 2 - (float)eng->ScreenWidth() /2;
-		eng->Cam->pos.y = b->pos.y + b->scale.y / 2 - (float)eng->ScreenHeight() /2;		
+		eng->Cam->pos.x = (b->pos.x + b->scale.x / 2 - (float)eng->ScreenWidth() / 2) + eng->Cam->offset.x;
+		eng->Cam->pos.y = (b->pos.y + b->scale.y / 2 - (float)eng->ScreenHeight() /2) + eng->Cam->offset.y;
 		//State machine
 		if (abs(rc->vel.x) > 1 && An->currentState->name != "Walk" && rc->onGround)
 			An->ChangeStates("Walk");
@@ -169,6 +215,11 @@ public:
 				RemoveObject(check.HitObject);
 			
 		}
+		if (GetMouse(2).bPressed)
+		{
+			Bomb* b = new Bomb(vec2d(Pl->b->pos.x + Pl->b->scale.x / 2 + (100 * Pl->s->Scalar.x * 2), Pl->b->pos.y - 100), vec2d(Pl->b->pos.x + Pl->b->scale.x / 2 + Pl->b->scale.x / 2 + 100 * Pl->s->Scalar.x, -200));
+			CreateObject(b);
+		}
 		if (GetMouse(1).bPressed)
 		{
 			vec2d v = DEngine::ScreenToWorld(this, vec2d((float)GetMouseX(), (float)GetMouseY()));
@@ -186,14 +237,31 @@ public:
 		}
 		if (GetKey(olc::Key::UP).bHeld)
 		{
-			Cam->zoom *= 1 + 0.1 * ET;
+			Cam->zoom *= 1 + 0.6f * ET;
 		}
 		if (GetKey(olc::Key::DOWN).bHeld)
 		{
-			Cam->zoom *= 1 - 0.1 * ET;
+			Cam->zoom *= 1 - 0.6f * ET;
 			
 		}
-		
+		if (GetKey(olc::Key::W).bHeld)
+		{
+			Cam->offset.y -= 400.f * Cam->zoom * ET;
+
+		}
+		if (GetKey(olc::Key::S).bHeld)
+		{
+			Cam->offset.y += 400.f * Cam->zoom * ET;
+		}
+		if (GetKey(olc::Key::A).bHeld)
+		{
+			Cam->offset.x -= 400.f * Cam->zoom * ET;
+
+		}
+		if (GetKey(olc::Key::D).bHeld)
+		{
+			Cam->offset.x += 400.f * Cam->zoom * ET;
+		}
 		
 		return true;
 

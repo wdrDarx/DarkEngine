@@ -21,8 +21,8 @@ public:
 	
 	void collide(CollisionSweep col)
 	{
-		if(col.Other->GetComponent<BoxCollider>(col.Other->Components)->pos.y > b->pos.y)
-		rc->collides = false;
+		//if(col.Other->GetComponent<BoxCollider>(col.Other->Components)->pos.y > b->pos.y)
+		//rc->collides = false;
 		 
 	}
 
@@ -36,6 +36,8 @@ public:
 		rc->collideDelegate = std::bind(&P::collide, this, std::placeholders::_1);
 		rc->Gravity = true;
 		rc->optimize = true;
+		rc->friction = 0.9f;
+		rc->bounce = 0.f;
 		AddComponent(b);
 		AddComponent(s);
 		AddComponent(rc);		

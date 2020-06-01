@@ -183,11 +183,15 @@ class Camera : public Object
 public:
 	vec2d pos;
 	float zoom;
+	vec2d offset;
+
 	Camera(vec2d p)
 	{
 		pos = p;
 		zoom = 1.f;
+		offset = vec2d(0, 0);
 	}
+	
 };
 
 struct RayHit
@@ -217,6 +221,7 @@ public:
 	Engine* Inst;
 	Camera* Cam;
 	olc::Decal* Blank;
+	float DeltaTime;
 	int Background;
 	int Foreground;
 	
@@ -241,6 +246,7 @@ public:
 	bool OnUserCreate() override
 	{
 		Cam = new Camera(vec2d(0, 0));
+		//CreateObject(Cam);
 		Blank = new olc::Decal(new olc::Sprite("Blank.png"));
 		Background = CreateLayer();
 		Foreground = CreateLayer();
@@ -253,12 +259,14 @@ public:
 	static void EngineUpdate(bool ClearOnFrame, Engine* eng, float fElapsedTime)
 	{
 		
+		
 		for (int i = 0; i < eng->Objects.size(); i++)
 		{
 			eng->Objects.at(i)->OnUpdate(fElapsedTime);
 		}
 
 		eng->OnUpdate(fElapsedTime);
+		eng->DeltaTime = fElapsedTime;
 	}
 
 
@@ -276,7 +284,7 @@ public:
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
-#if defined(ASYNC)
+#if defined(ENGINEASYNC)
 		std::future<void> update = std::async(std::launch::async, EngineUpdate, ClearOnFrame, this, fElapsedTime);
 #else
 		EngineUpdate(ClearOnFrame, this, fElapsedTime);
@@ -861,6 +869,7 @@ public:
 	bool onGround;
 	float friction;
 	float GroundLength;
+	float bounce;
 	bool optimize;
 	BoxCollider* Box;
 
@@ -885,8 +894,15 @@ public:
 		collideDelegate(col);				
 	}
 
+	void onAdd() override
+	{
+		Component::onAdd();
+		if (Gravity) vel.y += parent->eng->Gravity * parent->eng->DeltaTime;
+	}
+
 	static void CollisionCheck(float ET, RigidComp* rc)
 	{
+		if (rc->Gravity) rc->vel.y += rc->parent->eng->Gravity * ET;
 		BoxCollider* Box = rc->Box;
 			
 		Box->pos.x += rc->vel.x * ET;
@@ -894,16 +910,28 @@ public:
 		if (c1.collides)
 		{
 			Box->pos.x -= rc->vel.x * ET;
-			rc->vel.x -= rc->vel.x * ET;
+			RigidComp* oc = c1.Other->GetComponent<RigidComp>(c1.Other->Components);
+			if (oc != nullptr)
+				rc->vel.x = oc->vel.x * rc->bounce;
+			else
+				rc->vel.x = rc->vel.x * -1 * rc->bounce;
+			//rc->vel.x -= rc->vel.x * ET;
+			//rc->vel.x = 0.f;
 			rc->OnCollide(c1);
 		};
 
 		Box->pos.y += rc->vel.y * ET;
+		
 		c1 = Box->CollisionCheck(Box);
 		if (c1.collides)
 		{
 			Box->pos.y -= rc->vel.y * ET;
-			rc->vel.y -= rc->vel.y * ET;
+			RigidComp* oc = c1.Other->GetComponent<RigidComp>(c1.Other->Components);
+			if (oc != nullptr)
+				rc->vel.y = oc->vel.y * rc->bounce;
+			else
+				rc->vel.y = rc->vel.y * -1 * rc->bounce;
+
 			rc->OnCollide(c1);
 			// check ground
 			RayHit R1 = DEngine::RayTrace(rc->parent->eng, vec2d(rc->pos.x, rc->pos.y + rc->scale.y), vec2d(rc->pos.x, rc->pos.y + rc->scale.y + rc->GroundLength));
@@ -914,8 +942,8 @@ public:
 		}
 		else rc->onGround = false;
 
-		if (rc->Gravity) rc->vel.y += rc->parent->eng->Gravity * ET;
-
+		
+		
 
 		rc->vel.x -= rc->friction * rc->vel.x * ET;
 		rc->vel.y -= rc->friction * rc->vel.y * ET;
@@ -927,6 +955,7 @@ public:
 		if (collides)
 		{
 			bool calculate = true;
+			
 			if (optimize)
 			{
 				if (Box->pos.x > 0 && Box->pos.x < parent->eng->ScreenWidth() &&
@@ -935,13 +964,16 @@ public:
 				{
 					calculate = false; parent->eng->RemoveObject(parent);
 				}
-								
+						
+				if (!(abs(vel.x) > 0.1f || abs(vel.y) > 0.1f))
+					calculate = false;
 			}
+			
 			if (calculate)
 			{
 
 #if defined(ASYNC)
-				std::future<void> col = std::async(std::launch::async, CollisionCheck, ET, this);				
+				std::future<void> col = std::async( CollisionCheck, ET, this);				
 #else
 				CollisionCheck(ET,this);
 #endif
