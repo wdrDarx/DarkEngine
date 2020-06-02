@@ -36,8 +36,8 @@ public:
 		rc->collideDelegate = std::bind(&P::collide, this, std::placeholders::_1);
 		rc->Gravity = true;
 		rc->optimize = true;
-		rc->friction = 0.9f;
-		rc->bounce = 0.f;
+		rc->friction = 0.1f;
+		rc->bounce = 0.9f;
 		AddComponent(b);
 		AddComponent(s);
 		AddComponent(rc);		
@@ -64,12 +64,11 @@ public:
 
 	void Explode()
 	{
-		BoxCollider* t = new  BoxCollider(vec2d(pos.x - 150, pos.y - 150), vec2d(300,300), true);
-		AddComponent(t);
-		std::vector<BoxCollider*> boo = t->BoundingColliders();
+		
+		std::vector<BoxCollider*> boo = DEngine::BoxTrace(eng, vec2d(b->pos.x - 150, b->pos.y - 150), vec2d(300, 300));
 		for (int i = 0; i < boo.size(); ++i)
 		{
-			if (boo.at(i) != t)
+			if (boo.at(i) != b)
 			{
 				RigidComp* r = boo.at(i)->parent->GetComponent<RigidComp>(boo.at(i)->parent->Components);
 				if (r != nullptr)

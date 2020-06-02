@@ -829,6 +829,25 @@ namespace DEngine
 		return *Ray;
 	}
 
+	static std::vector<BoxCollider*> BoxTrace(Engine* eng, vec2d pos, vec2d scale)
+	{
+		std::vector<Object*> scan = eng->Objects;
+		std::vector<BoxCollider*> Bounders;
+		for (int i = 0; i < scan.size(); ++i)
+		{
+			BoxCollider* b = scan.at(i)->GetComponent<BoxCollider>(scan.at(i)->Components);
+			if (b != nullptr)
+			{
+				if (pos.x < b->pos.x + b->scale.x &&
+				pos.x + scale.x > b->pos.x &&
+				pos.y < b->pos.y + b->scale.y &&
+				pos.y + scale.y > b->pos.y) Bounders.push_back(b);				
+			}
+		}
+
+		return Bounders;
+	}
+
 	class Debug : public Object
 	{
 	public:
@@ -915,8 +934,7 @@ public:
 				rc->vel.x = oc->vel.x * rc->bounce;
 			else
 				rc->vel.x = rc->vel.x * -1 * rc->bounce;
-			//rc->vel.x -= rc->vel.x * ET;
-			//rc->vel.x = 0.f;
+			
 			rc->OnCollide(c1);
 		};
 
