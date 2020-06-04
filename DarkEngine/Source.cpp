@@ -86,23 +86,23 @@ public:
 		if (GetKey(olc::Key::D).bHeld)
 		{
 			//Pl->rc->vel.x = 60;
-			Cam->pos.x += ET * 1;
+			Cam->offset.x += ET * 100;
 		}
 		if (GetKey(olc::Key::A).bHeld)
 		{
 		//	Pl->rc->vel.x = -60;
-			Cam->pos.x -= ET * 1;
+			Cam->offset.x -= ET * 100;
 		}
 
 		if (GetKey(olc::Key::W).bHeld)
 		{
 			//Pl->rc->vel.x = 60;
-			Cam->pos.y -= ET * 1;
+			Cam->offset.y -= ET * 100;
 		}
 		if (GetKey(olc::Key::S).bHeld)
 		{
 			//	Pl->rc->vel.x = -60;
-			Cam->pos.y += ET * 1;
+			Cam->offset.y += ET * 100;
 		}
 
 

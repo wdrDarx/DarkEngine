@@ -123,6 +123,7 @@ public:
 		rc->Gravity = false;
 		rc->collideDelegate = std::bind(&Ball::collide, this, std::placeholders::_1);
 		rc->friction = 0;
+		rc->bounce = 0.f;
 		AddComponent(anim);
 		AddComponent(b);		
 		AddComponent(s);

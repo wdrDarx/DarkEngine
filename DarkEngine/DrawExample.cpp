@@ -1,5 +1,6 @@
-#if 0
+#if 1
 #define ASYNC
+//#define DEBUGMODE
 #include "Engine.h"
 
 
@@ -21,8 +22,8 @@ public:
 	
 	void collide(CollisionSweep col)
 	{
-		//if(col.Other->GetComponent<BoxCollider>(col.Other->Components)->pos.y > b->pos.y)
-		//rc->collides = false;
+		if(col.Other->GetComponent<BoxCollider>(col.Other->Components)->pos.y > b->pos.y)
+		rc->collides = false;
 		 
 	}
 
@@ -65,7 +66,7 @@ public:
 	void Explode()
 	{
 		
-		std::vector<BoxCollider*> boo = DEngine::BoxTrace(eng, vec2d(b->pos.x - 150, b->pos.y - 150), vec2d(300, 300));
+		std::vector<BoxCollider*> boo = DEngine::BoxTrace(eng, vec2d(b->pos.x - 150, b->pos.y - 150), vec2d(300, 300), b);
 		for (int i = 0; i < boo.size(); ++i)
 		{
 			if (boo.at(i) != b)

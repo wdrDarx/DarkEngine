@@ -1,7 +1,7 @@
-#if 1
+#if 0
 
-#define ASYNC
-#define DEBUGMODE
+//#define ASYNC
+//#define DEBUGMODE
 #include "Engine.h"
 
 class Sky : public Object
@@ -90,6 +90,7 @@ public:
 		s->posOffset = vec2d(-30.f, -1.f);
 		rc = new RigidComp(b, vec2d(0, 0), true);
 		rc->Gravity = true;
+		rc->GroundLength = 10;
 		std::vector<std::string> IdleAnims = { "Human/tile064.png" };
 		std::vector<std::string> WalkAnims = DEngine::SpriteNames("Human/tile0", 32, 39, ".png");
 		std::vector<std::string> JumpAnims = { "Human/tile046.png" };

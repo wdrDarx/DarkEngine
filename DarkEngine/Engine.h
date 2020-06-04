@@ -803,6 +803,7 @@ namespace DEngine
 	{
 		RayHit* Ray = new RayHit(false, vec2d(0, 0), nullptr);
 		float length = VecLength(vec2d(end.x - start.x, end.y - start.y));
+		vec2d check;
 
 		std::vector<Object*> Colliders;
 
@@ -813,7 +814,7 @@ namespace DEngine
 		}
 		for (int i = 0; i < (int)length; i++)
 		{
-			vec2d check = vec2d(start.x + ((end.x - start.x) * i / length), start.y + ((end.y - start.y) * i / length));
+		  check = vec2d(start.x + ((end.x - start.x) * i / length), start.y + ((end.y - start.y) * i / length));
 			for (int j = 0; j < Colliders.size(); j++)
 			{
 				BoxCollider* Box = Colliders.at(j)->GetComponent<BoxCollider>(Colliders.at(j)->Components);
@@ -825,11 +826,17 @@ namespace DEngine
 				}
 
 			}
-		}				
+		}	
+		if (!Ray->Hit)
+		{
+			Ray->StartPos = start;
+			Ray->HitPos = check;
+		}
+
 		return *Ray;
 	}
 
-	static std::vector<BoxCollider*> BoxTrace(Engine* eng, vec2d pos, vec2d scale)
+	static std::vector<BoxCollider*> BoxTrace(Engine* eng, vec2d pos, vec2d scale, BoxCollider* ignore)
 	{
 		std::vector<Object*> scan = eng->Objects;
 		std::vector<BoxCollider*> Bounders;
@@ -838,10 +845,14 @@ namespace DEngine
 			BoxCollider* b = scan.at(i)->GetComponent<BoxCollider>(scan.at(i)->Components);
 			if (b != nullptr)
 			{
-				if (pos.x < b->pos.x + b->scale.x &&
-				pos.x + scale.x > b->pos.x &&
-				pos.y < b->pos.y + b->scale.y &&
-				pos.y + scale.y > b->pos.y) Bounders.push_back(b);				
+				if (b != ignore)
+				{
+
+					if (pos.x < b->pos.x + b->scale.x &&
+						pos.x + scale.x > b->pos.x &&
+						pos.y < b->pos.y + b->scale.y &&
+						pos.y + scale.y > b->pos.y) Bounders.push_back(b);
+				}
 			}
 		}
 
@@ -861,8 +872,8 @@ namespace DEngine
 			Object::OnUpdate(ET);
 			vec2d p11 = DEngine::WorldToScreen(eng,p1);
 			vec2d p21 = DEngine::WorldToScreen(eng,p2);
-			eng->DrawDecal({p11.x, p11.y }, eng->Blank, { BLANKSIZE * 10 ,BLANKSIZE * 10 }, olc::RED);
-			eng->DrawDecal({ p21.x, p21.y }, eng->Blank, { BLANKSIZE * 10 ,BLANKSIZE * 10 }, olc::DARK_RED);
+			eng->DrawDecal({p11.x, p11.y }, eng->Blank, { BLANKSIZE * 1 ,BLANKSIZE * 1 }, olc::RED);
+			eng->DrawDecal({ p21.x, p21.y }, eng->Blank, { BLANKSIZE * 1 ,BLANKSIZE * 1 }, olc::DARK_RED);
 		}
 	};
 
@@ -903,7 +914,7 @@ public:
 		onGround = false;
 		friction = 1;
 		optimize = false;
-		GroundLength = 10;
+		GroundLength = 0;
 		
 	}
 		
@@ -924,16 +935,21 @@ public:
 		if (rc->Gravity) rc->vel.y += rc->parent->eng->Gravity * ET;
 		BoxCollider* Box = rc->Box;
 			
-		Box->pos.x += rc->vel.x * ET;
+		Box->pos.x += rc->vel.x * ET;		
 		CollisionSweep c1 = Box->CollisionCheck(Box);
 		if (c1.collides)
 		{
 			Box->pos.x -= rc->vel.x * ET;
-			RigidComp* oc = c1.Other->GetComponent<RigidComp>(c1.Other->Components);
-			if (oc != nullptr)
-				rc->vel.x = oc->vel.x * rc->bounce;
+			if (rc->bounce > 0.f)
+			{
+				RigidComp* oc = c1.Other->GetComponent<RigidComp>(c1.Other->Components);
+				if (oc != nullptr)
+					rc->vel.x = oc->vel.x * rc->bounce;
+				else
+					rc->vel.x = rc->vel.x * -1 * rc->bounce;
+			}
 			else
-				rc->vel.x = rc->vel.x * -1 * rc->bounce;
+			rc->vel.x -= rc->vel.x * ET;
 			
 			rc->OnCollide(c1);
 		};
@@ -944,19 +960,28 @@ public:
 		if (c1.collides)
 		{
 			Box->pos.y -= rc->vel.y * ET;
+			if (rc->bounce > 0.f)
+			{
 			RigidComp* oc = c1.Other->GetComponent<RigidComp>(c1.Other->Components);
 			if (oc != nullptr)
 				rc->vel.y = oc->vel.y * rc->bounce;
 			else
 				rc->vel.y = rc->vel.y * -1 * rc->bounce;
+			}
+			else
+			rc->vel.x -= rc->vel.x * ET;
 
 			rc->OnCollide(c1);
 			// check ground
-			RayHit R1 = DEngine::RayTrace(rc->parent->eng, vec2d(rc->pos.x, rc->pos.y + rc->scale.y), vec2d(rc->pos.x, rc->pos.y + rc->scale.y + rc->GroundLength));
-			//DEngine::DrawDebugRay(rc->parent->eng, R1);
-			RayHit R2 = DEngine::RayTrace(rc->parent->eng, vec2d(rc->pos.x + rc->scale.x, rc->pos.y + rc->scale.y), vec2d(rc->pos.x + rc->scale.x, rc->pos.y + rc->scale.y + rc->GroundLength));
-			if(R1.Hit || R2.Hit)
-			rc->onGround = true;			
+			if (rc->GroundLength > 0)
+			{
+				RayHit R1 = DEngine::RayTrace(rc->parent->eng, vec2d(rc->pos.x, rc->pos.y + rc->scale.y), vec2d(rc->pos.x, rc->pos.y + rc->scale.y + rc->GroundLength));
+				DEngine::DrawDebugRay(rc->parent->eng, R1);
+				RayHit R2 = DEngine::RayTrace(rc->parent->eng, vec2d(rc->pos.x + rc->scale.x, rc->pos.y + rc->scale.y), vec2d(rc->pos.x + rc->scale.x, rc->pos.y + rc->scale.y + rc->GroundLength));
+				DEngine::DrawDebugRay(rc->parent->eng, R2);
+				if (R1.Hit || R2.Hit)
+					rc->onGround = true;
+			}
 		}
 		else rc->onGround = false;
 
