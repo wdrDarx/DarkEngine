@@ -1,4 +1,4 @@
-#if 1
+#if 0
 #define ASYNC
 //#define DEBUGMODE
 #include "Engine.h"

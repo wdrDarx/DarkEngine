@@ -1,7 +1,7 @@
-#if 0
+#if 1
 
-//#define ASYNC
-//#define DEBUGMODE
+#define ASYNC
+
 #include "Engine.h"
 
 class Sky : public Object
@@ -262,6 +262,17 @@ public:
 		if (GetKey(olc::Key::D).bHeld)
 		{
 			Cam->offset.x += 400.f * Cam->zoom * ET;
+		}
+		if (GetKey(olc::Key::O).bHeld)
+		{
+			Pl->s->angle += 100.f * ET;
+
+		}
+		if (GetKey(olc::Key::P).bHeld)
+		{
+			Pl->s->angle -= 100.f * ET;
+			std::cout << Pl->s->angle << std::endl;
+
 		}
 		
 		return true;
