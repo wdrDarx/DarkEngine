@@ -1024,8 +1024,8 @@ public:
 				else
 					rc->vel.x = rc->vel.x * -1 * rc->bounce;
 			}
-			else
-				rc->vel.x -= rc->vel.x * ET;
+			
+			rc->vel.x -= rc->vel.x * ET;
 
 			rc->OnCollide(c1);
 		};
@@ -1048,8 +1048,8 @@ public:
 				else
 					rc->vel.y = rc->vel.y * -1 * rc->bounce;
 			}
-			else
-				rc->vel.y -= rc->vel.y * ET;
+			
+			rc->vel.y -= rc->vel.y * ET;
 
 			rc->OnCollide(c1);
 			// check ground

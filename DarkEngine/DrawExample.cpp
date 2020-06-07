@@ -90,7 +90,7 @@ public:
 		s = new Sprite(b, olc::RED);
 		rc = new RigidComp(b, vec2d(0, 0), true);
 		rc->Gravity = true;
-		rc->optimize = true;
+		rc->optimize = false;
 		AddComponent(b);
 		AddComponent(s);
 		AddComponent(rc);
@@ -111,8 +111,11 @@ public:
 	//
 	void DrawSquare()
 	{
-		P* d = new P(vec2d(GetMouseX(), GetMouseY()), vec2d(4, 4));
-		CreateObject(d);
+		if (DEngine::BoxTrace(this, vec2d(GetMouseX(), GetMouseY()), vec2d(4, 4), nullptr).size() < 1)
+		{
+			P* d = new P(vec2d(GetMouseX(), GetMouseY()), vec2d(4, 4));
+			CreateObject(d);
+		}
 	}
 
 	void SpawnBomb()
@@ -137,6 +140,11 @@ public:
 		//
 		Ground = new Object();
 		GroundC = new BoxCollider(vec2d(700, 0), vec2d(10, 700), true);
+		Ground->AddComponent(GroundC);
+		CreateObject(Ground);
+		//
+		Ground = new Object();
+		GroundC = new BoxCollider(vec2d(0, 0), vec2d(700, 10), true);
 		Ground->AddComponent(GroundC);
 		CreateObject(Ground);
 		return true;
