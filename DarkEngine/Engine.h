@@ -119,7 +119,7 @@ public:
 		for (int i = 0; i < Components.size(); ++i)
 		{
 			RemoveComponent(Components.at(i));
-			
+
 		}
 
 
@@ -195,6 +195,15 @@ public:
 
 };
 
+struct Texture
+{
+	olc::Sprite* Sprite;
+	std::string path;
+	Texture(std::string in) :Sprite(new olc::Sprite(in)), path(in)
+	{};
+
+};
+
 struct RayHit
 {
 public:
@@ -223,6 +232,7 @@ public:
 	Camera* Cam;
 	olc::Decal* Blank;
 	float DeltaTime;
+
 	int Background;
 	int Foreground;
 
@@ -233,6 +243,7 @@ public:
 	}
 	float Gravity = 200.0f;
 	std::vector<Object*> Objects;
+	std::vector<Texture> Textures;
 	bool ClearOnFrame = true;
 
 
@@ -848,6 +859,16 @@ namespace DEngine
 		return ray;
 	}
 
+	static olc::Sprite* GetTexture(Engine * eng, std::string check)
+	{
+		for (int i = 0; i < eng->Textures.size(); i++)
+		{
+			if (check == eng->Textures.at(i).path)
+				return eng->Textures.at(i).Sprite;
+		}
+	}
+
+
 	static RayHit RayTrace(Engine * eng, vec2d start, vec2d end)
 	{
 		RayHit* Ray = new RayHit(false, vec2d(0, 0), nullptr);
@@ -998,7 +1019,7 @@ public:
 				{
 					if (oc->vel.x == 0)
 						oc->vel.x = rc->vel.x * oc->bounce;
-					rc->vel.x = oc->vel.x * rc->bounce;					
+					rc->vel.x = oc->vel.x * rc->bounce;
 				}
 				else
 					rc->vel.x = rc->vel.x * -1 * rc->bounce;
@@ -1022,7 +1043,7 @@ public:
 				{
 					if (oc->vel.y == 0)
 						oc->vel.y = rc->vel.y * oc->bounce;
-					rc->vel.y = oc->vel.y * rc->bounce;					
+					rc->vel.y = oc->vel.y * rc->bounce;
 				}
 				else
 					rc->vel.y = rc->vel.y * -1 * rc->bounce;
@@ -1087,7 +1108,7 @@ public:
 			{
 
 #if defined(ASYNC)
-				std::future<void> col = std::async( CollisionCheck, ET, this);
+				std::future<void> col = std::async(CollisionCheck, ET, this);
 #else
 				CollisionCheck(ET, this);
 #endif
