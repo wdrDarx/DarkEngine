@@ -1,4 +1,4 @@
-#if 0
+#if 1
 #define ASYNC
 //#define DEBUGMODE
 #include "Engine.h"
@@ -22,8 +22,8 @@ public:
 	
 	void collide(CollisionSweep col)
 	{
-		if(col.Other->GetComponent<BoxCollider>(col.Other->Components)->pos.y > b->pos.y)
-		rc->collides = false;
+		//if(col.Other->GetComponent<BoxCollider>(col.Other->Components)->pos.y > b->pos.y)
+		//rc->collides = false;
 		 
 	}
 
@@ -37,9 +37,9 @@ public:
 		rc->collideDelegate = std::bind(&P::collide, this, std::placeholders::_1);
 		rc->Gravity = true;
 		rc->optimize = true;
-		rc->friction = 0.1f;
-		rc->bounce = 0.9f;
-		AddComponent(b);
+		rc->friction = 0.7f;
+		rc->bounce = 0.6f;
+		AddComponent(b);		
 		AddComponent(s);
 		AddComponent(rc);		
 	}

@@ -119,7 +119,7 @@ public:
 		for (int i = 0; i < Components.size(); ++i)
 		{
 			RemoveComponent(Components.at(i));
-			;
+			
 		}
 
 
@@ -995,7 +995,11 @@ public:
 			{
 				RigidComp* oc = c1.Other->GetComponent<RigidComp>(c1.Other->Components);
 				if (oc != nullptr)
-					rc->vel.x = oc->vel.x * rc->bounce;
+				{
+					if (oc->vel.x == 0)
+						oc->vel.x = rc->vel.x * oc->bounce;
+					rc->vel.x = oc->vel.x * rc->bounce;					
+				}
 				else
 					rc->vel.x = rc->vel.x * -1 * rc->bounce;
 			}
@@ -1015,12 +1019,16 @@ public:
 			{
 				RigidComp* oc = c1.Other->GetComponent<RigidComp>(c1.Other->Components);
 				if (oc != nullptr)
-					rc->vel.y = oc->vel.y * rc->bounce;
+				{
+					if (oc->vel.y == 0)
+						oc->vel.y = rc->vel.y * oc->bounce;
+					rc->vel.y = oc->vel.y * rc->bounce;					
+				}
 				else
 					rc->vel.y = rc->vel.y * -1 * rc->bounce;
 			}
 			else
-				rc->vel.x -= rc->vel.x * ET;
+				rc->vel.y -= rc->vel.y * ET;
 
 			rc->OnCollide(c1);
 			// check ground
@@ -1079,7 +1087,7 @@ public:
 			{
 
 #if defined(ASYNC)
-				std::future<void> col = std::async(CollisionCheck, ET, this);
+				std::future<void> col = std::async( CollisionCheck, ET, this);
 #else
 				CollisionCheck(ET, this);
 #endif
