@@ -197,10 +197,13 @@ public:
 
 struct Texture
 {
-	olc::Sprite* Sprite;
+	olc::Decal* Sprite;
 	std::string path;
-	Texture(std::string in) :Sprite(new olc::Sprite(in)), path(in)
-	{};
+	Texture(std::string in) 
+	{
+		Sprite = new olc::Decal(new olc::Sprite(in));
+		path = in;
+	};
 
 };
 
@@ -491,10 +494,11 @@ public:
 	{
 		PrimitiveComponent::onAdd();
 
-		if (spr != nullptr)
+		if (spr != nullptr && Dc == nullptr)
 			Dc = new olc::Decal(spr);
 		else
 		{
+			if(Dc == nullptr)
 			Dc = parent->eng->Blank;
 		}
 		Debug = parent->eng->Blank;
@@ -859,7 +863,7 @@ namespace DEngine
 		return ray;
 	}
 
-	static olc::Sprite* GetTexture(Engine * eng, std::string check)
+	static olc::Decal* GetTexture(Engine * eng, std::string check)
 	{
 		for (int i = 0; i < eng->Textures.size(); i++)
 		{

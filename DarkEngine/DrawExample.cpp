@@ -39,6 +39,7 @@ public:
 		rc->optimize = true;
 		rc->friction = 0.7f;
 		rc->bounce = 0.6f;
+		s->Dc = DEngine::GetTexture(eng, "DirtBlock.png");
 		AddComponent(b);		
 		AddComponent(s);
 		AddComponent(rc);		
@@ -113,7 +114,7 @@ public:
 	{
 		if (DEngine::BoxTrace(this, vec2d(GetMouseX(), GetMouseY()), vec2d(4, 4), nullptr).size() < 1)
 		{
-			P* d = new P(vec2d(GetMouseX(), GetMouseY()), vec2d(4, 4));
+			P* d = new P(vec2d(GetMouseX(), GetMouseY()), vec2d(8, 8));
 			CreateObject(d);
 		}
 	}
@@ -126,6 +127,7 @@ public:
 	//
 	bool OnCreate() override
 	{
+		Textures.push_back(Texture("DirtBlock.png"));
 		//
 		Gravity = 800.f;
 		Ground = new Object();
