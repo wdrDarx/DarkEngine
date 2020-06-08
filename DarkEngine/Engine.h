@@ -90,11 +90,12 @@ class Object
 public:
 
 	Engine* eng;
+	int UpdateLayer;
 	std::vector<Component*> Components;
 
 	Object()
 	{
-
+		
 	}
 
 
@@ -142,8 +143,8 @@ public:
 		delete c;
 	}
 
-	template<typename T, typename C> auto* GetComponent(C& container) {
-		for (auto& item : container) {
+	template<typename T> auto* GetComponent() {
+		for (auto& item : Components) {
 			auto p = dynamic_cast<T*>(item);
 			if (p != nullptr) return p;
 		}
@@ -527,7 +528,7 @@ public:
 	olc::Sprite* spr;
 	olc::Decal* Dc;
 	olc::Decal* Debug;
-	std::array<olc::vf2d, 4> Points;
+	std::array<olc::vf2d, 4> Points;	
 	float angle = 0;
 	int Layer;
 
@@ -559,6 +560,8 @@ public:
 		Layer = 0;
 
 	}
+
+	
 
 	void onAdd() override
 	{
@@ -724,6 +727,11 @@ struct AnimState
 		State = f;
 		name = n;
 	}
+
+	~AnimState()
+	{
+		delete State;
+	}
 };
 
 class Animator : public Component
@@ -783,9 +791,9 @@ public:
 		std::vector<BoxCollider*> Bounders;
 		for (int i = 0; i < scan.size(); ++i)
 		{
-			if (scan.at(i)->GetComponent<BoxCollider>(scan.at(i)->Components) != nullptr)
+			if (scan.at(i)->GetComponent<BoxCollider>() != nullptr)
 			{
-				BoxCollider* check = scan.at(i)->GetComponent<BoxCollider>(scan.at(i)->Components);
+				BoxCollider* check = scan.at(i)->GetComponent<BoxCollider>();
 				if (check != this && check != nullptr)
 				{
 					if (pos.x < check->pos.x + check->scale.x &&
@@ -917,6 +925,15 @@ namespace DEngine
 		return in > 0 ? 1 : -1;
 	}
 
+	static void SetLayer(Object* target, int layer)
+	{
+		target->UpdateLayer = layer;
+		std::sort(target->eng->Objects.begin(), target->eng->Objects.end(), [](Object* a, Object* b)
+			{
+				return a->UpdateLayer < b->UpdateLayer;
+			});
+	}
+	
 	static RayHit PointCollisionCheck(Engine * eng, vec2d check)
 	{
 		RayHit ray = RayHit(false, vec2d(0, 0), nullptr);
@@ -924,12 +941,12 @@ namespace DEngine
 
 		for (int i = 0; i < eng->Objects.size(); i++)
 		{
-			if (eng->Objects.at(i)->GetComponent<BoxCollider>(eng->Objects.at(i)->Components) != nullptr)
+			if (eng->Objects.at(i)->GetComponent<BoxCollider>() != nullptr)
 				Colliders.push_back(eng->Objects.at(i));
 		}
 		for (int j = 0; j < Colliders.size(); j++)
 		{
-			BoxCollider* Box = Colliders.at(j)->GetComponent<BoxCollider>(Colliders.at(j)->Components);
+			BoxCollider* Box = Colliders.at(j)->GetComponent<BoxCollider>();
 
 			if (Box != nullptr && Box->Collides && check.x > Box->pos.x && check.x < (Box->pos.x + Box->scale.x) && check.y > Box->pos.y && check.y < (Box->pos.y + Box->scale.y))
 			{
@@ -978,7 +995,7 @@ namespace DEngine
 
 		for (int i = 0; i < eng->Objects.size(); i++)
 		{
-			if (eng->Objects.at(i)->GetComponent<BoxCollider>(eng->Objects.at(i)->Components) != nullptr)
+			if (eng->Objects.at(i)->GetComponent<BoxCollider>() != nullptr)
 				Colliders.push_back(eng->Objects.at(i));
 		}
 		for (int i = 0; i < (int)length; i++)
@@ -986,7 +1003,7 @@ namespace DEngine
 			check = vec2d(start.x + ((end.x - start.x) * i / length), start.y + ((end.y - start.y) * i / length));
 			for (int j = 0; j < Colliders.size(); j++)
 			{
-				BoxCollider* Box = Colliders.at(j)->GetComponent<BoxCollider>(Colliders.at(j)->Components);
+				BoxCollider* Box = Colliders.at(j)->GetComponent<BoxCollider>();
 
 				if (Box != nullptr && Box->Collides && check.x > Box->pos.x && check.x < (Box->pos.x + Box->scale.x) && check.y > Box->pos.y && check.y < (Box->pos.y + Box->scale.y))
 				{
@@ -1011,7 +1028,7 @@ namespace DEngine
 		std::vector<BoxCollider*> Bounders;
 		for (int i = 0; i < scan.size(); ++i)
 		{
-			BoxCollider* b = scan.at(i)->GetComponent<BoxCollider>(scan.at(i)->Components);
+			BoxCollider* b = scan.at(i)->GetComponent<BoxCollider>();
 			if (b != nullptr)
 			{
 				if (b != ignore)
@@ -1113,7 +1130,7 @@ public:
 			Box->pos.x -= rc->vel.x * ET;
 			if (rc->bounce > 0.f)
 			{
-				RigidComp* oc = c1.Other->GetComponent<RigidComp>(c1.Other->Components);
+				RigidComp* oc = c1.Other->GetComponent<RigidComp>();
 				if (oc != nullptr)
 				{
 					if (oc->vel.x == 0)
@@ -1137,7 +1154,7 @@ public:
 			Box->pos.y -= rc->vel.y * ET;
 			if (rc->bounce > 0.f)
 			{
-				RigidComp* oc = c1.Other->GetComponent<RigidComp>(c1.Other->Components);
+				RigidComp* oc = c1.Other->GetComponent<RigidComp>();
 				if (oc != nullptr)
 				{
 					if (oc->vel.y == 0)

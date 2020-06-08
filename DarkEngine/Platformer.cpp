@@ -16,7 +16,8 @@ public:
 		s->optimize = false;
 		s->CameraTransform = false;
 		s->spr = new olc::Sprite("Dinosaur/Sky.png");
-		AddComponent(s);	    
+		AddComponent(s);	   
+		DEngine::SetLayer(this, 0);
 	}
 
 	void OnUpdate(float ET) override
@@ -105,7 +106,8 @@ public:
 
 		std::vector<AnimState*>* Anims = new std::vector<AnimState*>{ new AnimState(Flipbook::AnimFromFiles(s,IdleAnims, 0.1f,true), "Idle"),new AnimState(Flipbook::AnimFromFiles(s,WalkAnims, 0.1f,true), "Walk"), new AnimState(Flipbook::AnimFromFiles(s,JumpAnims, 0.1f,true), "Jump") };
 		An = new Animator(s, Anims);
-		
+		DEngine::SetLayer(this, 2);
+
 		AddComponent(An);
 		AddComponent(b);
 		AddComponent(s);
@@ -138,12 +140,12 @@ class Ground : public Object
 {
 public:
 	vec2d pos;
-	olc::Sprite* sp;
 	
-	Ground(vec2d p, olc::Sprite* s)
+	
+	Ground(vec2d p)
 	{
 		pos = p;		
-		sp = s;
+		
 	}
 
 	BoxCollider* b;
@@ -154,8 +156,8 @@ public:
 		Object::OnCreate();
 		b = new BoxCollider(pos, vec2d(100,100), true);
 		s = new Sprite(b);
-		s->spr = sp;
-		
+		s->Dc = DEngine::GetTexture(eng, "DirtBlock.png");
+		DEngine::SetLayer(this, 1);
 		AddComponent(b);
 		AddComponent(s);
 	}
@@ -170,12 +172,12 @@ public:
 	Player* Pl;
 	Ground* Gr;
 	Sky* Sk;	
-	 olc::Sprite* dirt = new olc::Sprite("DirtBlock.png");
+
 
 
 	void makeGround(vec2d pos)
 	{
-		Gr = new Ground(pos, dirt);
+		Gr = new Ground(pos);
 		CreateObject(Gr);
 	}
 	bool OnCreate() override
@@ -238,7 +240,7 @@ public:
 			
 			if (!check->CollisionCheck(check).collides)
 			{				
-				Ground* G = new Ground(v2, dirt);
+				Ground* G = new Ground(v2);
 				CreateObject(G);
 			}
 			Objects.at(0)->RemoveComponent(check);
@@ -279,8 +281,7 @@ public:
 		if (GetKey(olc::Key::P).bHeld)
 		{
 			Pl->s->angle -= 100.f * ET;
-			std::cout << Pl->s->angle << std::endl;
-
+			std::cout << Pl->s->angle << std::endl;		
 		}
 		
 		return true;
