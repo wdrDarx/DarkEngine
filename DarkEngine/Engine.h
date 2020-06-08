@@ -1,4 +1,5 @@
-
+#ifndef ENGINE
+#define ENGINE
 #include <iostream>
 #include <chrono>
 #include <vector>
@@ -199,15 +200,26 @@ public:
 struct Texture
 {
 	olc::Decal* Sprite;
+	olc::Sprite* buffer;
 	std::string path;
-	Texture(std::string in, bool load = false) 
+	Texture(std::string in, bool load = false)
 	{
 		if (load)
-			Sprite = new olc::Decal(new olc::Sprite(in));
+		{
+			buffer = new olc::Sprite(in);
+			Sprite = new olc::Decal(buffer);
+		}
 		else Sprite = nullptr;
 
 		path = in;
 	};
+
+	~Texture()
+	{
+		delete Sprite;
+		delete buffer;
+
+	}
 
 };
 
@@ -230,6 +242,28 @@ public:
 
 };
 
+class Level
+{
+public:
+	Engine* eng;
+	Level(Engine* e) : eng(e)
+	{
+
+	}
+
+	virtual void OnCreate()
+	{};
+	virtual void OnUpdate(float ET)
+	{};
+	virtual void OnDelete()
+	{};
+
+	~Level()
+	{
+		OnDelete();
+	}
+};
+
 
 
 class Engine : public olc::PixelGameEngine
@@ -239,6 +273,7 @@ public:
 	Camera* Cam;
 	olc::Decal* Blank;
 	float DeltaTime;
+	Level* CurrentLevel;
 
 	int Background;
 	int Foreground;
@@ -246,11 +281,11 @@ public:
 	Engine()
 	{
 		sAppName = "Engine";
-
+		CurrentLevel = nullptr;
 	}
 	float Gravity = 200.0f;
 	std::vector<Object*> Objects;
-	std::vector<Texture> Textures;
+	std::vector<Texture*> Textures;
 	bool ClearOnFrame = true;
 
 
@@ -266,18 +301,22 @@ public:
 	{
 		Cam = new Camera(vec2d(0, 0));
 		//CreateObject(Cam);
-		Blank = new olc::Decal(new olc::Sprite("Blank.png"));
+		olc::Sprite* blank = new olc::Sprite("Blank.png");
+		Blank = new olc::Decal(blank);
 		Background = CreateLayer();
 		Foreground = CreateLayer();
+		if (CurrentLevel != nullptr) CurrentLevel->OnCreate();
+		delete blank;
+
 		OnCreate();
 		return true;
 	}
 
 public:
 
-	static void EngineUpdate(bool ClearOnFrame, Engine* eng, float fElapsedTime)
+	static void EngineUpdate(bool ClearOnFrame, Engine * eng, float fElapsedTime)
 	{
-
+		if (eng->CurrentLevel != nullptr) eng->CurrentLevel->OnUpdate(fElapsedTime);
 
 		for (int i = 0; i < eng->Objects.size(); i++)
 		{
@@ -312,18 +351,45 @@ public:
 		return true;
 	}
 
-	void CreateObject(Object* newObject)
+	void CreateObject(Object * newObject)
 	{
 		newObject->eng = Inst;
 		newObject->OnCreate();
 		Objects.push_back(newObject);
 	}
-	void RemoveObject(Object* d)
+	void RemoveObject(Object * d)
 	{
 		std::vector<Object*>::iterator it = std::find(Objects.begin(), Objects.end(), d);
 		int index = std::distance(Objects.begin(), it);
 		EraseFromUnorderedByIndex(Objects, index);
 		delete d;
+	}
+	template<typename T>
+	bool LoadLevel()
+	{
+
+
+		for (int i = 0; i < Objects.size(); i++)
+		{
+			delete Objects.at(i);
+		}
+		Objects.clear();
+		for (int i = 0; i < Textures.size(); i++)
+		{
+			delete Textures.at(i);
+		}
+		Textures.clear();
+
+		if (CurrentLevel != nullptr)
+		{			
+			delete CurrentLevel;
+		}
+
+		CurrentLevel = new T(Inst);
+
+		CurrentLevel->OnCreate();
+
+		return true;
 	}
 
 private:
@@ -502,8 +568,8 @@ public:
 			Dc = new olc::Decal(spr);
 		else
 		{
-			if(Dc == nullptr)
-			Dc = parent->eng->Blank;
+			if (Dc == nullptr)
+				Dc = parent->eng->Blank;
 		}
 		Debug = parent->eng->Blank;
 
@@ -598,8 +664,10 @@ public:
 		std::vector<olc::Decal*> Frames;
 		for (int i = 0; i < files.size(); ++i)
 		{
-			olc::Decal* d = new olc::Decal(new olc::Sprite(files.at(i)));
+			olc::Sprite* s = new olc::Sprite(files.at(i));
+			olc::Decal* d = new olc::Decal(s);
 			Frames.push_back(d);
+			delete s;
 		}
 		Flipbook* f = new Flipbook(spr, Frames, ct, l);
 		return f;
@@ -844,6 +912,11 @@ namespace DEngine
 		return v;
 	}
 
+	static float NormalizeFloat(float in)
+	{
+		return in > 0 ? 1 : -1;
+	}
+
 	static RayHit PointCollisionCheck(Engine * eng, vec2d check)
 	{
 		RayHit ray = RayHit(false, vec2d(0, 0), nullptr);
@@ -869,17 +942,29 @@ namespace DEngine
 
 	static olc::Decal* GetTexture(Engine * eng, std::string check)
 	{
+		bool done = false;
 		for (int i = 0; i < eng->Textures.size(); i++)
 		{
-			if (check == eng->Textures.at(i).path)
+			if (check == eng->Textures.at(i)->path)
 			{
-				if (eng->Textures.at(i).Sprite == nullptr)
+				if (eng->Textures.at(i)->Sprite == nullptr)
 				{
-					eng->Textures.at(i).Sprite = new olc::Decal(new olc::Sprite(eng->Textures.at(i).path));
+					olc::Sprite* temp = new olc::Sprite(eng->Textures.at(i)->path);
+					eng->Textures.at(i)->Sprite = new olc::Decal(temp);
+					delete temp;
 				}
+				done = true;
+				return eng->Textures.at(i)->Sprite;
+
 			}
-				return eng->Textures.at(i).Sprite;
+
 		}
+		if (!done)
+		{
+			eng->Textures.push_back(new Texture(check, true));
+			return DEngine::GetTexture(eng, check);
+		}
+
 	}
 
 
@@ -1038,7 +1123,7 @@ public:
 				else
 					rc->vel.x = rc->vel.x * -1 * rc->bounce;
 			}
-			
+
 			rc->vel.x -= rc->vel.x * ET;
 
 			rc->OnCollide(c1);
@@ -1062,7 +1147,7 @@ public:
 				else
 					rc->vel.y = rc->vel.y * -1 * rc->bounce;
 			}
-			
+
 			rc->vel.y -= rc->vel.y * ET;
 
 			rc->OnCollide(c1);
@@ -1134,7 +1219,7 @@ public:
 	// bind like this -> rc->collideDelegate = std::bind(&class::functionName, this, std::placeholders::_1);
 	std::function<void(CollisionSweep)> collideDelegate;
 };
-
+#endif
 
 
 
