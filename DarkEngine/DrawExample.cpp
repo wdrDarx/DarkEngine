@@ -1,4 +1,4 @@
-#if 1
+#if 0
 #define ASYNC
 //#define DEBUGMODE
 #include "Engine.h"
@@ -176,7 +176,7 @@ int main()
 {
 	Game game;
 	game.Instanciate(&game);
-	game.Construct(700, 700, 1, 1);
+	game.Construct(1000, 1000, 1, 1);
 	game.Start();
 
 	return 0;

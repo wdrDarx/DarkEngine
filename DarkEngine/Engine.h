@@ -17,6 +17,7 @@
 #include <future>
 #define OLC_PGE_APPLICATION
 #define OLC_GFX_OPENGL10
+#define LOG(x) std::cout<<x<<std::endl
 constexpr float BLANKSIZE = 0.00092592592f;
 #include "olcPixelGameEngine.h"
 
@@ -199,9 +200,12 @@ struct Texture
 {
 	olc::Decal* Sprite;
 	std::string path;
-	Texture(std::string in) 
+	Texture(std::string in, bool load = false) 
 	{
-		Sprite = new olc::Decal(new olc::Sprite(in));
+		if (load)
+			Sprite = new olc::Decal(new olc::Sprite(in));
+		else Sprite = nullptr;
+
 		path = in;
 	};
 
@@ -868,6 +872,12 @@ namespace DEngine
 		for (int i = 0; i < eng->Textures.size(); i++)
 		{
 			if (check == eng->Textures.at(i).path)
+			{
+				if (eng->Textures.at(i).Sprite == nullptr)
+				{
+					eng->Textures.at(i).Sprite = new olc::Decal(new olc::Sprite(eng->Textures.at(i).path));
+				}
+			}
 				return eng->Textures.at(i).Sprite;
 		}
 	}

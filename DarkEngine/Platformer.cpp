@@ -1,4 +1,4 @@
-#if 0
+#if 1
 
 #define ASYNC
 
@@ -16,7 +16,15 @@ public:
 		s->optimize = false;
 		s->CameraTransform = false;
 		s->spr = new olc::Sprite("Dinosaur/Sky.png");
-		AddComponent(s);
+		AddComponent(s);	    
+	}
+
+	void OnUpdate(float ET) override
+	{
+		Object::OnUpdate(ET);
+		//s->pos = vec2d((float)eng->ScreenWidth() * -0.5f, (float)eng->ScreenHeight() * -0.5f);
+		LOG(s->scale.x);
+		s->scale = vec2d((float)eng->ScreenWidth() * 2, (float)eng->ScreenHeight() * 2);
 	}
 
 };
