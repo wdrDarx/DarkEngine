@@ -98,6 +98,7 @@ class Object
 public:
 
 	Engine* eng;
+	int UpdateLayer;
 	std::vector<Component*> Components;
 
 	Object()
@@ -757,6 +758,11 @@ struct AnimState
 		State = f;
 		name = n;
 	}
+
+	~AnimState()
+	{
+		delete State;
+	}
 };
 
 class Animator : public Component
@@ -972,6 +978,15 @@ namespace DEngine
 
 		}
 		return ray;
+	}
+
+	static void SetLayer(Object* target, int layer)
+	{
+		target->UpdateLayer = layer;
+		std::sort(target->eng->Objects.begin(), target->eng->Objects.end(), [](Object * a, Object * b)
+			{
+				return a->UpdateLayer < b->UpdateLayer;
+			});
 	}
 
 	static olc::Decal* GetTexture(Engine * eng, std::string check)
