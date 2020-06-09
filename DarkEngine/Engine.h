@@ -13,6 +13,11 @@
 #include <array>
 #include <thread>
 #include<cmath>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <istream>
+#include <iostream>
 #include <mutex>
 #include <typeinfo>
 #include <future>
@@ -21,6 +26,9 @@
 #define LOG(x) std::cout<<x<<std::endl
 constexpr float BLANKSIZE = 0.00092592592f;
 #include "olcPixelGameEngine.h"
+
+
+
 
 
 template< typename TContainer >
@@ -90,12 +98,11 @@ class Object
 public:
 
 	Engine* eng;
-	int UpdateLayer;
 	std::vector<Component*> Components;
 
 	Object()
 	{
-		
+
 	}
 
 
@@ -265,13 +272,38 @@ public:
 	}
 };
 
+class LevelObject
+{
+public:
+	vec2d pos;
+	vec2d scale;
+	std::string object;
 
 
+	LevelObject()
+	{
+
+	}
+
+	template<typename T>
+	void Make(vec2d p, vec2d s)
+	{
+		pos = p;
+		scale = s;
+		object = typeid(T).name();
+	}
+
+
+};
+
+
+class Controller;
 class Engine : public olc::PixelGameEngine
 {
 public:
 	Engine* Inst;
 	Camera* Cam;
+	Controller* controller;
 	olc::Decal* Blank;
 	float DeltaTime;
 	Level* CurrentLevel;
@@ -382,7 +414,7 @@ public:
 		Textures.clear();
 
 		if (CurrentLevel != nullptr)
-		{			
+		{
 			delete CurrentLevel;
 		}
 
@@ -528,7 +560,7 @@ public:
 	olc::Sprite* spr;
 	olc::Decal* Dc;
 	olc::Decal* Debug;
-	std::array<olc::vf2d, 4> Points;	
+	std::array<olc::vf2d, 4> Points;
 	float angle = 0;
 	int Layer;
 
@@ -560,8 +592,6 @@ public:
 		Layer = 0;
 
 	}
-
-	
 
 	void onAdd() override
 	{
@@ -727,11 +757,6 @@ struct AnimState
 		State = f;
 		name = n;
 	}
-
-	~AnimState()
-	{
-		delete State;
-	}
 };
 
 class Animator : public Component
@@ -854,6 +879,7 @@ public:
 
 namespace DEngine
 {
+
 	static vec2d RotateVector(vec2d origin, vec2d input, float iangle)
 	{
 		if (iangle > 360) iangle -= 360;
@@ -925,15 +951,6 @@ namespace DEngine
 		return in > 0 ? 1 : -1;
 	}
 
-	static void SetLayer(Object* target, int layer)
-	{
-		target->UpdateLayer = layer;
-		std::sort(target->eng->Objects.begin(), target->eng->Objects.end(), [](Object* a, Object* b)
-			{
-				return a->UpdateLayer < b->UpdateLayer;
-			});
-	}
-	
 	static RayHit PointCollisionCheck(Engine * eng, vec2d check)
 	{
 		RayHit ray = RayHit(false, vec2d(0, 0), nullptr);
@@ -982,6 +999,11 @@ namespace DEngine
 			return DEngine::GetTexture(eng, check);
 		}
 
+	}
+
+	static Object* MakeObject(Engine * eng, LevelObject o)
+	{
+		return nullptr;//Convert<Object*>(o.object); 
 	}
 
 
@@ -1118,6 +1140,8 @@ public:
 		if (Gravity) vel.y += parent->eng->Gravity * parent->eng->DeltaTime;
 	}
 
+
+
 	static void CollisionCheck(float ET, RigidComp * rc)
 	{
 
@@ -1235,6 +1259,39 @@ public:
 	}
 	// bind like this -> rc->collideDelegate = std::bind(&class::functionName, this, std::placeholders::_1);
 	std::function<void(CollisionSweep)> collideDelegate;
+};
+
+// pawn and controller, UE4 style 
+class Controller;
+class Pawn : public Object
+{
+public:
+	Controller* controller;
+
+	bool Possessed()
+	{
+		return eng->controller = controller;
+	}
+
+	virtual void OnPossess(Controller* c) {};
+};
+
+class Controller : public Object
+{
+public:
+	Pawn* Possessed;
+
+	void Possess(Pawn* p)
+	{
+		p->OnPossess(this);
+		p->controller = this;
+		Possessed = p;
+		OnPossess(p);
+	}
+
+	virtual void OnPossess(Pawn* p) {};
+
+
 };
 #endif
 
